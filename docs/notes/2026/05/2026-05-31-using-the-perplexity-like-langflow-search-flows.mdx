@@ -1,0 +1,485 @@
+---
+title: "Using the Perplexity-Like Langflow Search Flows"
+description: "A practical guide to the current Langflow flows that replicate Perplexity-style search, grounded answers, crawler extraction, and chunk citations."
+date: "2026-05-31"
+type: "guide"
+tags: [langflow, perplexity, search, citations]
+status: "published"
+---
+
+# Using the Perplexity-Like Langflow Search Flows
+
+<div className="text-sm text-gray-500 mb-6">
+  2026-05-31 · guide · 8 min read
+</div>
+
+## Summary
+
+This note documents the current working versions of the Perplexity-like Langflow flows, what each one does, and how to test them. The main upgrade is that the system has moved from simple web-connected answering to a more Perplexity-like pipeline with search planning, source filtering, webpage extraction, reranking, source chunks, and citation-aware answers.
+
+---
+
+## What This Solves
+
+The goal is to build a self-hosted Perplexity-like answer engine in Langflow. The system should search the web through SearXNG, read selected webpages, clean the content, build a source map, pass evidence into a separate LLM node, and return answers with citations.
+
+The latest working version is:
+
+```text
+Perplexity Sonar - Planner Reranker Citations MVP
+https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2
+```
+
+Its run endpoint is:
+
+```text
+https://langflow.yitwah.site/api/v1/run/6e66f96b-9365-4997-adef-c55e3352a3d2
+```
+
+<Info>
+This is not yet a full Perplexity-grade search engine. It is a working Perplexity-like answer engine: it can plan searches, use SearXNG, read pages, build evidence chunks, and produce chunk-level citations.
+</Info>
+
+## Who This Is For
+
+This guide is for future me or a teammate who wants to test, extend, or wrap these Langflow flows as a Perplexity-like Search API, Sonar API, or Agent API.
+
+Starting assumptions:
+
+- The remote Langflow server is available at `https://langflow.yitwah.site`.
+- The SearXNG instance is available at `https://search.yitwah.site`.
+- The Langflow API key is loaded from `~/.zshrc` as `LANGFLOW_API_KEY`.
+- LLM calls should remain visible as separate Langflow nodes, not hidden inside crawler or planner components.
+
+## Prerequisites
+
+- Remote Langflow access at `https://langflow.yitwah.site`.
+- API key in the shell:
+
+```bash
+source ~/.zshrc >/dev/null 2>&1
+echo "$LANGFLOW_API_KEY"
+```
+
+- SearXNG JSON search endpoint available through:
+
+```text
+https://search.yitwah.site/search?q=QUERY&format=json
+```
+
+- The current main flow:
+
+```text
+6e66f96b-9365-4997-adef-c55e3352a3d2
+```
+
+## The Workflow
+
+<Steps>
+  <Step title="Start with the latest Sonar-style flow">
+    Use `Perplexity Sonar - Planner Reranker Citations MVP` for the main end-to-end test. This flow is the current best version because it includes search planning, source scoring, webpage reading, source chunking, a separate LLM answer node, and a citation formatter.
+  </Step>
+
+  <Step title="Send a plain question">
+    In the Langflow Playground, test with:
+
+```text
+Compare Firecrawl, Exa, and SearXNG for a Langflow web search agent
+```
+
+    The expected result is a JSON object with `answer`, `detected_chunk_citations`, `detected_urls`, and `citation_warnings`.
+  </Step>
+
+  <Step title="Send a JSON request with domain filters">
+    Use JSON when you want to test Perplexity-like filtering behavior:
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Compare Firecrawl, Exa, and SearXNG for a Langflow web search agent"
+    }
+  ],
+  "search_domain_filter": [
+    "docs.firecrawl.dev",
+    "docs.exa.ai",
+    "docs.searxng.org",
+    "github.com"
+  ],
+  "max_results": 6
+}
+```
+
+    The expected behavior is that the flow prefers those official or developer-oriented domains and admits when there is not enough sourced evidence.
+  </Step>
+
+  <Step title="Check the citation fields">
+    A healthy response should look like this shape:
+
+```json
+{
+  "answer": "...",
+  "detected_chunk_citations": ["1.1", "2.3"],
+  "detected_urls": ["https://..."],
+  "citation_warnings": []
+}
+```
+
+    `detected_chunk_citations` proves the LLM used source chunks such as `[1.1]` instead of only appending raw URLs.
+  </Step>
+
+  <Step title="Run the API test from a terminal">
+    Use the Langflow run API:
+
+```bash
+source ~/.zshrc >/dev/null 2>&1
+
+curl --compressed -sS \
+  -H "x-api-key: $LANGFLOW_API_KEY" \
+  -H "content-type: application/json" \
+  -X POST \
+  --data '{
+    "input_value": "Compare Firecrawl, Exa, and SearXNG for a Langflow web search agent",
+    "input_type": "chat",
+    "output_type": "chat"
+  }' \
+  "https://langflow.yitwah.site/api/v1/run/6e66f96b-9365-4997-adef-c55e3352a3d2"
+```
+  </Step>
+</Steps>
+
+## Current Flow Inventory
+
+### Main recommended flow
+
+```text
+Perplexity Sonar - Planner Reranker Citations MVP
+https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2
+```
+
+Implements:
+
+- Search Planner
+- SearXNG search through `https://search.yitwah.site`
+- Domain filtering
+- Rule-based source scoring and reranking
+- URL opening and webpage content reading
+- Source map and chunk citation IDs like `[1.1]`
+- Separate LLM answer node
+- Citation response formatter
+
+This is the current main testing target.
+
+### Search-only API flow
+
+```text
+Perplexity Search API - MVP
+https://langflow.yitwah.site/flow/a765119e-a487-4063-ad0d-2f0dfbd13259
+```
+
+Implements:
+
+- Single-query search
+- Multi-query search
+- `max_results`
+- Basic domain allow or deny filtering
+- Structured search results
+
+Use this when testing the search facade separately from answering.
+
+### Search with content flow
+
+```text
+Perplexity Search API - With Content
+https://langflow.yitwah.site/flow/d0f9f7bf-84ae-41c3-b796-1cfae1f151b1
+```
+
+Implements:
+
+- Search
+- URL opening
+- Webpage content extraction
+- Structured search results with page content
+
+Use this when testing whether search results can be read as content.
+
+### Tool-style flow
+
+```text
+Web Search Tools - MVP
+https://langflow.yitwah.site/flow/2c97d25f-463c-4c9e-91c9-fb112e653adb
+```
+
+Implements:
+
+- `web_search`
+- `open_url`
+- Tool-shaped outputs for future Agent use
+
+Use this when preparing an Agent that calls search and open-url tools.
+
+### Basic Sonar flow
+
+```text
+Local Sonar Chat - MVP v2
+https://langflow.yitwah.site/flow/b5a36d9e-5dd8-4785-a093-9400a51845d3
+```
+
+Implements:
+
+- Search
+- Crawl
+- Grounded answer
+- Separate LLM node
+
+Use this as the simpler fallback when the planner/reranker/citation version is too complex for a quick sanity check.
+
+### Agent schema flow
+
+```text
+Agent Runs - MVP v2
+https://langflow.yitwah.site/flow/d8cd43fd-8882-479d-96f2-be9b6d6a7438
+```
+
+Implements:
+
+- Agent run style schema
+- Basic trace output
+- Separate LLM node
+
+This is not yet a true autonomous planner loop. It is a schema and workflow foundation.
+
+### Visual crawler flow
+
+```text
+Onyx Web Crawler - Visual Pipeline V3
+https://langflow.yitwah.site/flow/1027fcd5-1ec5-4e58-9ca4-41c747832b87
+```
+
+Implements:
+
+- URL safety
+- HTTP fetch
+- HTML cleaning
+- PDF extraction
+- Cloudflare detection
+- Browser fallback branch
+- WebContent builder
+- Content truncation
+- LLM context builder
+
+Use this when debugging crawler behavior separately from search and answering.
+
+## What We Have Replicated From Perplexity
+
+The current system has replicated the main Perplexity-like product workflow:
+
+```text
+question
+-> search planning
+-> web search
+-> source filtering
+-> source scoring
+-> webpage reading
+-> evidence chunking
+-> grounded LLM answer
+-> citation extraction
+```
+
+Current replication level:
+
+- Search API shape: partial
+- Sonar-style grounded answer: working MVP
+- Real-time webpage reading: working MVP
+- Domain filters: basic working version
+- Chunk citations: working MVP
+- Agent runs: schema MVP
+- Streaming: not implemented
+- Claim-level citation validation: not implemented yet
+- Strong ranking or embedding reranker: not implemented yet
+- FastAPI `/v1/search`, `/v1/chat/completions`, `/v1/agent/runs` facade: not implemented yet
+
+<Tip>
+The practical milestone is that the system has moved from "can answer with web access" to "can plan a search, choose sources, read them, and answer with source chunks."
+</Tip>
+
+## Example Prompts To Test
+
+### Test the full main pipeline
+
+```text
+Compare Firecrawl, Exa, and SearXNG for a Langflow web search agent.
+```
+
+Checks:
+
+- Search planning
+- Search result collection
+- Page extraction
+- Source chunking
+- Chunk citations
+
+### Test official-source filtering
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "What are the main differences between LangGraph and Langflow for building search agents?"
+    }
+  ],
+  "search_domain_filter": [
+    "docs.langchain.com",
+    "docs.langflow.org",
+    "github.com"
+  ],
+  "max_results": 8
+}
+```
+
+Checks:
+
+- Domain filtering
+- Official documentation preference
+- Evidence-limited answer behavior
+
+### Test chunk citations
+
+```text
+What does Firecrawl provide for web scraping and LLM-ready content extraction? Answer with citations.
+```
+
+Checks:
+
+- Whether `[1.1]`, `[2.1]`, or similar chunk IDs appear
+- Whether `citation_warnings` stays empty
+
+### Test evidence humility
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Compare Exa and SearXNG specifically for Langflow integration. Only use official documentation."
+    }
+  ],
+  "search_domain_filter": [
+    "docs.exa.ai",
+    "docs.searxng.org",
+    "docs.langflow.org"
+  ],
+  "max_results": 5
+}
+```
+
+Checks:
+
+- Whether the model admits insufficient evidence
+- Whether it avoids inventing unsupported integration details
+
+### Test open-source research
+
+```text
+Research open-source alternatives to Perplexity AI. Compare Perplexica, Scira, Fireplexity, and Open Deep Research. Include citations.
+```
+
+Checks:
+
+- Multi-source research behavior
+- Table-style answer quality
+- Citation coverage
+
+### Test deny filtering
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Find reliable documentation for building web search agents with Langflow."
+    }
+  ],
+  "search_domain_filter": [
+    "-reddit.com",
+    "-medium.com",
+    "-pinterest.com"
+  ],
+  "max_results": 8
+}
+```
+
+Checks:
+
+- Domain deny filtering
+- Whether low-quality sources are avoided
+
+### Test Chinese answer behavior
+
+```text
+帮我比较 Firecrawl、Exa、SearXNG 哪个更适合做一个自托管的 Perplexity-like 搜索问答系统，并给出引用。
+```
+
+Checks:
+
+- Chinese answer quality
+- English source citation handling
+- Chunk citation behavior
+
+## Common Failure Modes
+
+<Warning>
+If `detected_chunk_citations` is empty, the LLM probably did not follow the citation format. Strengthen the prompt or run a second formatter/validator pass.
+</Warning>
+
+<Warning>
+If the answer cites only one source after a restrictive `search_domain_filter`, the filter may be too narrow or SearXNG may not return enough matching pages. This is expected behavior; the right response is to admit insufficient evidence.
+</Warning>
+
+<Warning>
+If a page cannot be read, the crawler should return a failure reason instead of feeding Cloudflare challenge text or empty content into the LLM.
+</Warning>
+
+<Warning>
+The current reranker is rule-based. It can boost docs and GitHub sources, but it is not yet a semantic reranker like Jina, an embedding reranker, or a strong LLM listwise reranker.
+</Warning>
+
+## Final Checklist
+
+- [ ] Main flow opens at `https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2`.
+- [ ] A plain prompt returns HTTP `200` from the Langflow run API.
+- [ ] Output JSON contains `answer`.
+- [ ] Output JSON contains non-empty `detected_chunk_citations`.
+- [ ] Output JSON contains source URLs in `detected_urls`.
+- [ ] `citation_warnings` is empty or explains exactly what is missing.
+- [ ] Domain-filtered requests return narrower evidence or admit insufficient evidence.
+- [ ] LLM call remains a separate Langflow node.
+
+## What To Remember
+
+The crawler is no longer the main bottleneck. The next quality jump comes from stronger search quality and evidence quality:
+
+- Add a real reranker or embedding-based ranking layer.
+- Add claim-level citation validation.
+- Add provider capability mapping for language, region, date, and freshness filters.
+- Add a real Agent loop with scratchpad, stop condition, and tool trace.
+- Add a FastAPI facade for `/v1/search`, `/v1/chat/completions`, and `/v1/agent/runs`.
+
+The current system is best described as:
+
+```text
+Perplexity-like answer engine: working MVP
+Perplexity-grade search engine: not yet
+```
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** langflow · perplexity · search · citations  
+  **Related:** [[Build a Perplexity-Like Web Search Flow in Langflow]]
+</Card>
