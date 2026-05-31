@@ -1,0 +1,30 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Yitwah Notes",
+  "colors": {
+    "primary": "#2563eb",
+    "light": "#60a5fa",
+    "dark": "#0284c7"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Notes",
+        "pages": [
+          {
+            "group": "2026",
+            "pages": [
+              {
+                "group": "May",
+                "pages": [
+                  "docs/notes/2026/05/2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

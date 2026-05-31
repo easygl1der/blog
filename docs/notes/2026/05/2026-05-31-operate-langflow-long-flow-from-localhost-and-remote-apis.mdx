@@ -1,0 +1,299 @@
+---
+title: "Operate LangFlow Long Flow from Localhost and Remote APIs"
+description: "A practical guide for running one LangFlow long flow on localhost:7860 and controlling local or remote flows through authenticated REST APIs."
+date: "2026-05-31"
+type: "guide"
+tags: [langflow, api, mcp, codex, workflow]
+status: "published"
+---
+
+# Operate LangFlow Long Flow from Localhost and Remote APIs
+
+<div className="text-sm text-gray-500 mb-6">
+  2026-05-31 · guide · 12 min read
+</div>
+
+## Summary
+
+This guide records the working setup for controlling a LangFlow long flow from Codex through APIs instead of browser automation. The stable local target is one LangFlow server on `localhost:7860`, with the long flow kept in the `Starter Project` and controlled through `x-api-key` authenticated REST calls.
+
+---
+
+## What This Solves
+
+The goal is to avoid a messy setup where multiple LangFlow servers run on different ports such as `7861`, `7863`, and `7865`. The working rule is simple: run one local LangFlow instance on `localhost:7860`, point Codex MCP tools at that instance, and use the same API pattern for remote LangFlow when needed.
+
+The current long flow is:
+
+```text
+Main Flow
+Flow ID: 074add69-c4ca-4380-aff6-52b83e0239be
+Local URL: http://localhost:7860/flow/074add69-c4ca-4380-aff6-52b83e0239be
+Project ID: 23b5fba1-b555-4baa-9bb0-6a784d52aaf1
+```
+
+The current operational decision is also important: do not connect the expensive `Agent` branch for routine runs. It can consume too many tokens and trigger unnecessary tool loading.
+
+<Tip>
+Keep the long flow editable on the canvas, but keep expensive branches disconnected until they are explicitly needed.
+</Tip>
+
+## Who This Is For
+
+This is for future me using Codex with LangFlow through MCP and REST APIs. It assumes LangFlow is installed locally, an API key exists, and Codex can run shell commands on the same machine.
+
+It is also useful when the same long flow must be operated in two places:
+
+- Local development on `http://localhost:7860`
+- Remote service such as `https://langflow.yitwah.site`
+
+## Prerequisites
+
+- A local LangFlow virtual environment at `/Users/yitwah/langflow-local/.venv`
+- A LangFlow API key available in the shell as `LANGFLOW_API_KEY`
+- Codex MCP configuration at `/Users/yitwah/.codex/config.toml`
+- The long flow already present in LangFlow
+- `curl`, `jq`, and Python available locally
+- Optional remote LangFlow endpoint, for example `https://langflow.yitwah.site`
+
+Check the local API key without printing it:
+
+```bash
+test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
+```
+
+## The Workflow
+
+<Steps>
+  <Step title="Run exactly one local LangFlow server">
+    Use `localhost:7860` as the only local LangFlow port for this long flow. Stop old servers on `7861`, `7863`, or `7865` before starting the stable one.
+
+    ```bash
+    for port in 7860 7861 7865; do
+      lsof -nP -iTCP:$port -sTCP:LISTEN
+    done
+    ```
+
+    Start LangFlow in a detached `screen` session:
+
+    ```bash
+    screen -S langflow-7860 -dm bash -lc 'cd /Users/yitwah/langflow-local && exec /Users/yitwah/langflow-local/.venv/bin/python -m langflow.__main__ run --host 127.0.0.1 --port 7860 --no-open-browser --log-level info > /tmp/langflow-7860.log 2>&1'
+    ```
+
+    Confirm health:
+
+    ```bash
+    curl -fsS http://127.0.0.1:7860/health_check
+    ```
+
+    Expected result:
+
+    ```json
+    {"status":"ok","chat":"ok","db":"ok"}
+    ```
+  </Step>
+
+  <Step title="Open the Main Flow directly">
+    Avoid loading through the full project dashboard when working on a heavy canvas. Use the direct flow URL:
+
+    ```text
+    http://localhost:7860/flow/074add69-c4ca-4380-aff6-52b83e0239be
+    ```
+
+    Direct opening avoids some workspace browsing overhead and keeps the workflow focused.
+  </Step>
+
+  <Step title="Configure Codex MCP for localhost">
+    Point the starter project MCP proxy at `localhost:7860`:
+
+    ```toml
+    [mcp_servers.lf-starter_project]
+    command = "uvx"
+    args = [
+      "mcp-proxy",
+      "--transport",
+      "streamablehttp",
+      "http://localhost:7860/api/v1/mcp/project/23b5fba1-b555-4baa-9bb0-6a784d52aaf1/streamable"
+    ]
+    startup_timeout_sec = 120.0
+    ```
+
+    Point the admin MCP at the same local base URL:
+
+    ```toml
+    [mcp_servers.langflow-admin.env]
+    LANGFLOW_BASE_URL = "http://localhost:7860"
+    LANGFLOW_USE_BROWSEROS = "false"
+    BROWSEROS_MCP_URL = "http://127.0.0.1:9000/mcp"
+    ```
+
+    Store API keys in environment variables or secure config, not in guide text.
+  </Step>
+
+  <Step title="Use REST APIs for local flow operations">
+    List flows:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "http://localhost:7860/api/v1/flows/?get_all=true" | jq 'length'
+    ```
+
+    Fetch the long flow:
+
+    ```bash
+    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "http://localhost:7860/api/v1/flows/$FLOW" \
+      -o /tmp/main-flow.json
+    ```
+
+    Update a complete flow JSON:
+
+    ```bash
+    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X PUT \
+      "http://localhost:7860/api/v1/flows/$FLOW" \
+      --data-binary @/tmp/main-flow.json
+    ```
+  </Step>
+
+  <Step title="Run or minimally build the flow through API">
+    Run the flow:
+
+    ```bash
+    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "http://localhost:7860/api/v1/run/$FLOW?stream=false" \
+      -d '{"inputs":{"input_value":"/Users/yitwah/Projects/pdf2latex/pdf/test.pdf"},"tweaks":{}}'
+    ```
+
+    For a lighter test, build only until a specific component:
+
+    ```bash
+    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "http://localhost:7860/api/v1/build/$FLOW/flow?stop_component_id=CustomComponent-Kx7jD" \
+      -d '{"inputs":{"input_value":"/Users/yitwah/Projects/pdf2latex/pdf/test.pdf"},"tweaks":{}}'
+    ```
+
+    The build endpoint returns a job ID. Stream events like this:
+
+    ```bash
+    JOB_ID="replace-with-returned-job-id"
+    curl --compressed -sS -N \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "http://localhost:7860/api/v1/build/$JOB_ID/events"
+    ```
+  </Step>
+
+  <Step title="Operate the remote LangFlow with the same pattern">
+    For remote work, change only the base URL and API key source:
+
+    ```bash
+    export LANGFLOW_REMOTE_BASE_URL="https://langflow.yitwah.site"
+    export LANGFLOW_REMOTE_API_KEY="set-this-in-your-shell-or-secret-store"
+    ```
+
+    Then use:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_REMOTE_API_KEY" \
+      "$LANGFLOW_REMOTE_BASE_URL/api/v1/flows/?get_all=true"
+    ```
+
+    Remote MCP streamable endpoint pattern:
+
+    ```json
+    {
+      "mcpServers": {
+        "lf-starter_project": {
+          "command": "uvx",
+          "args": [
+            "mcp-proxy",
+            "--transport",
+            "streamablehttp",
+            "https://langflow.yitwah.site/api/v1/mcp/project/05314765-c54d-49c5-bc25-3ae5b302ebad/streamable"
+          ]
+        }
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Keep expensive Agent branches disconnected">
+    In the current long flow, avoid connecting edges into `Agent-hNNgH` unless the task explicitly needs it.
+
+    Verification command:
+
+    ```bash
+    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "http://localhost:7860/api/v1/flows/$FLOW" \
+      | jq '.data.edges | map(select(.source=="Agent-hNNgH" or .target=="Agent-hNNgH")) | length'
+    ```
+
+    Expected result:
+
+    ```text
+    0
+    ```
+  </Step>
+</Steps>
+
+## Common Failure Modes
+
+<Warning>
+If the browser shows `misc.fetchErrorMessage` or `misc.fetchErrorDescription`, the frontend health check failed or the browser session is stale. First check `http://localhost:7860/health_check`, then clear site data for `localhost:7860` or open a new private window.
+</Warning>
+
+<Warning>
+If LangFlow reports `sqlite3.OperationalError: database is locked`, there are usually multiple LangFlow processes pointing at the same SQLite database. Stop duplicate ports and keep only `7860` running.
+</Warning>
+
+<Warning>
+If red boxes show `OSError Details: 5`, inspect the build event stream. In the long flow session, this came from `Run Flow` tool nodes connected to the Agent. The fix was to disconnect those `Run Flow -> Agent tools` edges.
+</Warning>
+
+<Warning>
+Do not connect `PDF Path Injector -> Agent` or `Run Flow -> Agent tools` during ordinary PDF processing. The Agent path is token-heavy and may run subflow tools even when the main PDF metadata path already works.
+</Warning>
+
+<Tip>
+Use stopped builds to test individual components. They are faster and safer than running the entire long flow while debugging a single edge or input block.
+</Tip>
+
+## Final Checklist
+
+- [ ] `curl http://127.0.0.1:7860/health_check` returns `{"status":"ok","chat":"ok","db":"ok"}`
+- [ ] `7861`, `7863`, and `7865` are not running old LangFlow servers
+- [ ] `http://localhost:7860/flow/074add69-c4ca-4380-aff6-52b83e0239be` opens the long flow
+- [ ] `LANGFLOW_API_KEY` is set in the shell or secure Codex config
+- [ ] The MCP starter project URL uses `localhost:7860`
+- [ ] The admin MCP base URL uses `http://localhost:7860`
+- [ ] Agent edge count is `0` unless an Agent run is explicitly desired
+- [ ] Remote operations use `LANGFLOW_REMOTE_BASE_URL` and `LANGFLOW_REMOTE_API_KEY`
+
+## What To Remember
+
+The durable rule is: one long flow, one local port, one API pattern. Keep local development on `localhost:7860`, use `x-api-key` for API operations, and do not let heavy Agent branches become part of the default run path.
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** langflow · api · mcp · codex · workflow  
+  **Related:** [[LangFlow]] · [[Codex MCP]] · [[API automation]]
+</Card>
