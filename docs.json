@@ -19,7 +19,8 @@
                 "group": "May",
                 "pages": [
                   "docs/notes/2026/05/2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis",
-                  "docs/notes/2026/05/2026-05-31-operate-langflow-flows-through-api-and-mcp"
+                  "docs/notes/2026/05/2026-05-31-operate-langflow-flows-through-api-and-mcp",
+                  "docs/notes/2026/05/2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow"
                 ]
               }
             ]
