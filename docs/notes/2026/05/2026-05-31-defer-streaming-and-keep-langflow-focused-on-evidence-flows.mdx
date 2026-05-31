@@ -1,0 +1,207 @@
+---
+title: "Defer Streaming and Keep Langflow Focused on Evidence Flows"
+description: "A decision note capturing why streaming should be postponed and later implemented as a reusable FastAPI gateway around Langflow evidence flows."
+date: "2026-05-31"
+type: "decision"
+tags: [langflow, streaming, gateway, architecture]
+status: "published"
+---
+
+# Defer Streaming and Keep Langflow Focused on Evidence Flows
+
+<div className="text-sm text-gray-500 mb-6">
+  2026-05-31 · decision · 6 min read
+</div>
+
+## Summary
+
+Streaming is useful, but it is not the next priority. The current priority is to make the Langflow flows strong: search planning, SearXNG retrieval, source filtering, crawler extraction, reranking, evidence chunks, and citation-aware answering.
+
+The streaming work should be paused and recorded as a later architectural layer. When we return to it, the best path is a lightweight FastAPI gateway around Langflow, not forcing token streaming into every Langflow flow.
+
+---
+
+## Decision
+
+Pause streaming implementation for now.
+
+Keep the active work focused on building and testing Langflow flows:
+
+- Search API-style flow
+- Search with content flow
+- Web search/open URL tool flow
+- Sonar-style grounded QA flow
+- Agent run schema flow
+- Visual Onyx-style crawler flow
+- Planner/reranker/citation Sonar flow
+
+When streaming becomes the priority again, implement it outside Langflow as a reusable gateway:
+
+```text
+Client / CLI / frontend / agent
+-> FastAPI Streaming Gateway
+-> Langflow Evidence Builder Flow
+-> OpenAI-compatible LLM streaming
+-> SSE events back to client
+```
+
+Langflow should remain the visual workflow engine for evidence construction. The gateway should own streaming protocol concerns.
+
+## Alternatives Considered
+
+### Put streaming directly inside Langflow
+
+This would mean trying to make each Langflow flow stream progress or token deltas through the normal Langflow run API.
+
+Why this is not the preferred path:
+
+- Langflow is strongest as a visual orchestration layer.
+- The current `/api/v1/run/{flow_id}` pattern is better for complete run results.
+- Streaming needs protocol-level control: `text/event-stream`, keep-alive, cancellation, event ordering, and structured error events.
+- Forcing every flow to define its own streaming behavior would make the system harder to reuse.
+
+### Build a new full frontend and backend framework immediately
+
+This would mean building a Perplexity-like UI, backend, stream protocol, and flow gateway all at once.
+
+Why this is not the preferred path:
+
+- The immediate bottleneck is not UI.
+- The core product quality depends more on Langflow search/crawler/reranker/citation flows.
+- A frontend should come after the API behavior stabilizes.
+
+### Add a small FastAPI gateway later
+
+This is the chosen future direction.
+
+The gateway can expose:
+
+```text
+POST /v1/search
+POST /v1/search/stream
+POST /v1/chat/completions
+POST /v1/agent/runs
+```
+
+It can support:
+
+- OpenAI-compatible request shapes
+- Perplexity-like response shapes
+- SSE streaming
+- tool trace events
+- search progress events
+- answer token deltas
+- citation events
+- error and cancellation handling
+
+## Rationale
+
+The current Langflow work has already moved from simple web-connected answering to a stronger Perplexity-like skeleton:
+
+```text
+question
+-> search planning
+-> SearXNG retrieval
+-> domain filtering
+-> source scoring
+-> URL opening / crawler extraction
+-> evidence chunking
+-> separate LLM node
+-> citation formatter
+```
+
+That is the right foundation to strengthen first.
+
+The latest main flow is:
+
+```text
+Perplexity Sonar - Planner Reranker Citations MVP
+https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2
+```
+
+This flow already validates the most important architecture rule:
+
+```text
+LLM calls are visible as their own Langflow nodes.
+Custom components prepare evidence, but they do not hide the LLM.
+```
+
+Streaming should respect that same boundary:
+
+```text
+Langflow prepares evidence.
+The gateway streams the answer.
+```
+
+This separation keeps Langflow readable and easy to modify while still making it possible to offer a Perplexity/OpenAI-style API later.
+
+## Trade-offs & Risks
+
+<Warning>
+Pausing streaming means the current system still returns complete responses rather than progressive token deltas. Long search-and-answer runs may feel slower because users wait until the full answer is ready.
+</Warning>
+
+<Warning>
+If streaming is implemented too late, frontend and API consumers may start depending on the raw Langflow run API. That would make a later `/v1/*` facade migration slightly more annoying.
+</Warning>
+
+<Warning>
+If streaming is implemented inside each flow instead of in a shared gateway, every future workflow will need a custom streaming format. That would fragment clients and make Agent traces harder to standardize.
+</Warning>
+
+The accepted trade-off is:
+
+```text
+Short-term: focus on stronger Langflow flows and tolerate non-streaming output.
+Long-term: add a shared gateway that streams many workflows consistently.
+```
+
+## Revisit Trigger
+
+Return to streaming when one of these becomes true:
+
+- The main Langflow flows are stable enough that API ergonomics becomes the bottleneck.
+- A frontend needs Perplexity-like progressive output.
+- Agent runs need live tool traces.
+- Long crawler or PDF workflows need progress events.
+- External clients need OpenAI-compatible `stream: true`.
+
+When revisiting, start with this minimum plan:
+
+```text
+1. Create a Langflow Evidence Builder flow that outputs grounded_prompt, sources, and chunks.
+2. Build a small FastAPI gateway.
+3. Implement /health.
+4. Implement /v1/chat/completions stream=false as a proxy to the current Sonar flow.
+5. Implement /v1/chat/completions stream=true using SSE.
+6. Call the Evidence Builder flow first.
+7. Stream LLM tokens from an OpenAI-compatible model endpoint.
+8. Emit citation and done events at the end.
+```
+
+The first event schema should be:
+
+```text
+run_started
+evidence_started
+evidence_ready
+source_selected
+llm_started
+content_delta
+answer_done
+citation
+error
+done
+```
+
+Keep the first implementation backend-only. A frontend can come later.
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** decision  
+  **Tags:** langflow · streaming · gateway · architecture  
+  **Related:** [[Using the Perplexity-Like Langflow Search Flows]]
+</Card>
