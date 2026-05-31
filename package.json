@@ -1,0 +1,15 @@
+{
+  "name": "yitwah-notes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/export-mintlify.mjs",
+    "vercel-build": "npm run build",
+    "check": "mintlify validate && mintlify broken-links --check-anchors --check-redirects --check-snippets && mintlify a11y"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.16",
+    "mintlify": "latest"
+  }
+}
