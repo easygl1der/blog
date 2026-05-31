@@ -1,0 +1,396 @@
+---
+title: "Operate LangFlow Flows Through API and MCP"
+description: "A public-safe guide to controlling LangFlow flows, files, runs, MCP project tools, and tests from the command line without exposing API keys."
+date: "2026-05-31"
+type: "guide"
+tags: [langflow, api, mcp, automation, cli]
+status: "published"
+---
+
+# Operate LangFlow Flows Through API and MCP
+
+<div className="text-sm text-gray-500 mb-6">
+  2026-05-31 · guide · 14 min read
+</div>
+
+## Summary
+
+LangFlow can be operated through its web UI, but the same work can usually be done more reproducibly through authenticated REST APIs and MCP endpoints. This note explains how the API and MCP layers fit together, how command-line calls edit and run flows, and how to keep public notes safe by never exposing real API keys.
+
+---
+
+## What This Solves
+
+This guide answers a practical question: if Codex or another agent can control LangFlow through APIs, what exactly is it calling, and how can a human reproduce the same operations from the command line?
+
+The operating model is:
+
+```text
+Human or Codex
+  -> command line or MCP tool
+  -> LangFlow REST API
+  -> flow JSON, files, run jobs, MCP project endpoints
+```
+
+The important rule for a public blog is that secrets stay out of the document. Commands should use environment variables such as `$LANGFLOW_API_KEY`, not literal key values.
+
+<Warning>
+Never paste a real LangFlow API key into a public note, GitHub repo, terminal transcript, or screenshot. Use shell variables and environment variable names.
+</Warning>
+
+## Who This Is For
+
+This is for a future self or teammate who wants to automate LangFlow operations from a terminal, Codex, or MCP client. It assumes the reader can run `curl`, understands JSON enough to inspect flow payloads with `jq`, and has permission to access the target LangFlow server.
+
+The examples use a local base URL:
+
+```bash
+export LANGFLOW_BASE_URL="http://localhost:7860"
+export LANGFLOW_API_KEY="env-local-api-key-value"
+```
+
+For a remote server, change only the base URL and key source:
+
+```bash
+export LANGFLOW_BASE_URL="https://your-langflow-domain.example"
+export LANGFLOW_API_KEY="env-remote-api-key-value"
+```
+
+## Prerequisites
+
+- LangFlow reachable at `$LANGFLOW_BASE_URL`
+- A valid API key stored in `$LANGFLOW_API_KEY`
+- `curl` for HTTP requests
+- `jq` for JSON inspection
+- Optional `mcp-proxy` when exposing a LangFlow project as MCP tools
+- A known `FLOW_ID` and `PROJECT_ID`
+
+Recommended shell setup:
+
+```bash
+export LANGFLOW_BASE_URL="http://localhost:7860"
+export LANGFLOW_API_KEY="env-api-key-value"
+export FLOW_ID="074add69-c4ca-4380-aff6-52b83e0239be"
+export PROJECT_ID="23b5fba1-b555-4baa-9bb0-6a784d52aaf1"
+```
+
+Check server health:
+
+```bash
+curl -fsS "$LANGFLOW_BASE_URL/health_check"
+```
+
+Expected result:
+
+```json
+{"status":"ok","chat":"ok","db":"ok"}
+```
+
+## The Workflow
+
+<Steps>
+  <Step title="Understand the authentication model">
+    LangFlow API calls use the `x-api-key` header:
+
+    ```bash
+    curl -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/"
+    ```
+
+    The key belongs in an environment variable or secret manager. The command is safe to publish because it contains only `$LANGFLOW_API_KEY`.
+  </Step>
+
+  <Step title="List and inspect flows">
+    List flows:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      | jq '.[] | {id, name, folder_id}'
+    ```
+
+    Fetch one flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      -o /tmp/langflow-flow.json
+    ```
+
+    Inspect nodes and edges:
+
+    ```bash
+    jq '{
+      name,
+      id,
+      node_count: (.data.nodes | length),
+      edge_count: (.data.edges | length)
+    }' /tmp/langflow-flow.json
+    ```
+  </Step>
+
+  <Step title="Edit a flow by changing JSON">
+    LangFlow canvas state is stored as flow JSON. To edit through API, fetch the flow, modify `data.nodes` or `data.edges`, then send the complete body back.
+
+    Example: count edges connected to a token-heavy Agent:
+
+    ```bash
+    jq '.data.edges
+      | map(select(.source=="Agent-hNNgH" or .target=="Agent-hNNgH"))
+      | length' /tmp/langflow-flow.json
+    ```
+
+    Example Python edit that removes all edges connected to `Agent-hNNgH`:
+
+    ```python
+    import json
+    from pathlib import Path
+
+    path = Path("/tmp/langflow-flow.json")
+    flow = json.loads(path.read_text())
+
+    flow["data"]["edges"] = [
+        edge for edge in flow["data"]["edges"]
+        if edge.get("source") != "Agent-hNNgH"
+        and edge.get("target") != "Agent-hNNgH"
+    ]
+
+    Path("/tmp/langflow-flow-edited.json").write_text(
+        json.dumps(flow, ensure_ascii=False, separators=(",", ":"))
+    )
+    ```
+
+    Save the edited flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X PUT \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      --data-binary @/tmp/langflow-flow-edited.json
+    ```
+  </Step>
+
+  <Step title="Create, patch, upload, and delete flows">
+    Create a new flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X POST \
+      "$LANGFLOW_BASE_URL/api/v1/flows/" \
+      -d '{"name":"API Created Flow","description":"Created from command line","data":{"nodes":[],"edges":[]}}'
+    ```
+
+    Patch metadata:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X PATCH \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      -d '{"description":"Updated through API"}'
+    ```
+
+    Upload a flow file:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -F "file=@/path/to/exported-flow.json" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/upload/"
+    ```
+
+    Delete a flow only when the target is certain:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -X DELETE \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID"
+    ```
+  </Step>
+
+  <Step title="Upload and manage files for a flow">
+    Upload a PDF or other file to a flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -F "file=@/path/to/paper.pdf" \
+      "$LANGFLOW_BASE_URL/api/v1/files/upload/$FLOW_ID"
+    ```
+
+    List uploaded files:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/files/list/$FLOW_ID" \
+      | jq
+    ```
+
+    Download a file:
+
+    ```bash
+    FILE_NAME="paper.pdf"
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/files/download/$FLOW_ID/$FILE_NAME" \
+      -o "/tmp/$FILE_NAME"
+    ```
+  </Step>
+
+  <Step title="Run a flow and inspect the result">
+    Run a flow by ID:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/run/$FLOW_ID?stream=false" \
+      -d '{"inputs":{"input_value":"/path/to/input.pdf"},"tweaks":{}}' \
+      | jq
+    ```
+
+    Use advanced run when you need richer control:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/run/advanced/$FLOW_ID" \
+      -d '{"inputs":{"input_value":"test input"},"tweaks":{}}' \
+      | jq
+    ```
+  </Step>
+
+  <Step title="Debug with build jobs and event streams">
+    A full run can be expensive. A build job can stop at a specific component and stream events.
+
+    Start a build:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$FLOW_ID/flow?stop_component_id=CustomComponent-Kx7jD" \
+      -d '{"inputs":{"input_value":"/path/to/input.pdf"},"tweaks":{}}' \
+      | jq -r '.job_id'
+    ```
+
+    Stream build events:
+
+    ```bash
+    export JOB_ID="job-id-from-build-response"
+
+    curl --compressed -sS -N \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$JOB_ID/events"
+    ```
+
+    Cancel a build:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -X POST \
+      "$LANGFLOW_BASE_URL/api/v1/build/$JOB_ID/cancel"
+    ```
+  </Step>
+
+  <Step title="Expose a project as MCP tools">
+    LangFlow can expose a project through MCP. The project endpoint looks like this:
+
+    ```text
+    /api/v1/mcp/project/{project_id}
+    ```
+
+    Check the MCP project metadata:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$PROJECT_ID" \
+      | jq
+    ```
+
+    Use `mcp-proxy` to bridge a streamable HTTP MCP endpoint into a local MCP server:
+
+    ```bash
+    uvx mcp-proxy \
+      --transport streamablehttp \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$$PROJECT_ID/streamable"
+    ```
+
+    In a Codex-style config this becomes:
+
+    ```toml
+    [mcp_servers.lf-starter_project]
+    command = "uvx"
+    args = [
+      "mcp-proxy",
+      "--transport",
+      "streamablehttp",
+      "http://localhost:7860/api/v1/mcp/project/$PROJECT_ID/streamable"
+    ]
+    ```
+
+    MCP does not magically bypass LangFlow permissions. It still depends on the server endpoint, project visibility, and any credentials required by the LangFlow deployment.
+  </Step>
+</Steps>
+
+## Common Failure Modes
+
+<Warning>
+If a command works locally but the browser does not, check browser cookies and the exact port. The API can be healthy while the frontend session is stale.
+</Warning>
+
+<Warning>
+If a public guide contains a literal API key, rotate that key immediately and remove it from Git history if it was committed. Public documentation should use `$LANGFLOW_API_KEY`, not a real token.
+</Warning>
+
+<Warning>
+If build event streams hang, the flow may be waiting on a long-running component, model call, or tool branch. Use `stop_component_id` to isolate the smallest component that reproduces the issue.
+</Warning>
+
+<Warning>
+If `database is locked` appears on a local SQLite LangFlow instance, stop duplicate LangFlow processes. Running multiple servers against the same local database is a common cause.
+</Warning>
+
+<Tip>
+Prefer a safe sequence for flow edits: fetch JSON, edit a copy, validate with `jq`, save with `PUT`, then re-fetch and compare node and edge counts.
+</Tip>
+
+## Final Checklist
+
+- [ ] The guide uses `$LANGFLOW_API_KEY`, not a literal API key
+- [ ] `$LANGFLOW_BASE_URL` points at the intended local or remote server
+- [ ] `curl "$LANGFLOW_BASE_URL/health_check"` returns healthy status
+- [ ] Flow edits are made against a fetched JSON copy
+- [ ] Full flow updates use `PUT /api/v1/flows/{flow_id}`
+- [ ] File uploads use `POST /api/v1/files/upload/{flow_id}`
+- [ ] Test runs use `POST /api/v1/run/{flow_id_or_name}`
+- [ ] Debug runs use `POST /api/v1/build/{flow_id}/flow`
+- [ ] MCP project bridging uses the project streamable HTTP endpoint
+- [ ] Expensive Agent or tool branches are disconnected unless explicitly needed
+
+## What To Remember
+
+LangFlow automation is mostly JSON and HTTP. MCP is a convenient tool layer on top of LangFlow project endpoints, while REST APIs are the lower-level control surface for flows, files, builds, and runs. Keep secrets in environment variables, test with small stopped builds, and treat the canvas as a JSON document that can be inspected, edited, and saved reproducibly.
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** langflow · api · mcp · automation · cli  
+  **Related:** [[LangFlow]] · [[MCP]] · [[API automation]] · [[Vercel blog]]
+</Card>
