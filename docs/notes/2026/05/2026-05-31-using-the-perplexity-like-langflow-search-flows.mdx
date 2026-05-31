@@ -289,16 +289,21 @@ question
 
 Current replication level:
 
-- Search API shape: partial
-- Sonar-style grounded answer: working MVP
-- Real-time webpage reading: working MVP
-- Domain filters: basic working version
-- Chunk citations: working MVP
-- Agent runs: schema MVP
-- Streaming: not implemented
-- Claim-level citation validation: not implemented yet
-- Strong ranking or embedding reranker: not implemented yet
-- FastAPI `/v1/search`, `/v1/chat/completions`, `/v1/agent/runs` facade: not implemented yet
+| Feature | Perplexity | Our current version | Replication |
+| --- | --- | --- | --- |
+| Real-time search | Own large-scale web index with ranked results | SearXNG metasearch, tested and working | 60% |
+| Multi-query | Native support for multiple queries | Search Planner can automatically split queries | 70% |
+| Domain filter | Official allowlist and denylist support, up to 20 domains | Basic domain filter is working | 70% |
+| Language / region filter | Official language and country/region support | Provider capability mapping is not complete yet | 25% |
+| Date / recency filter | Official time and freshness controls | Mostly designed, not fully wired through | 25% |
+| Content extraction | Search can control `max_tokens_per_page` | Crawler, `open_url`, and HTML cleaning are working | 70% |
+| Sonar QA | Search + read + generate + citations | Latest Sonar flow is implemented | 65% |
+| Citations | Official `citations` and `search_results` outputs | Source/chunk citations exist, for example `[1.1]` | 60% |
+| Claim-level citation validation | Stronger internal quality, though not fully transparent publicly | Currently detects citations but does not verify whether a claim is supported | 30% |
+| Ranking / reranking | Own ranking, freshness, and authority signals | Rule reranker only; no embedding, Jina, or LLM rerank yet | 45% |
+| Agent API | Tools, models, search controls, and streaming | Agent Runs MVP exists, but it is not a real autonomous loop yet | 40% |
+| Streaming | Official support | Not implemented yet | 0%-10% |
+| OpenAI-compatible facade | Official Chat Completions compatibility | Langflow run API works, but there is no `/v1/*` facade yet | 35% |
 
 <Tip>
 The practical milestone is that the system has moved from "can answer with web access" to "can plan a search, choose sources, read them, and answer with source chunks."
