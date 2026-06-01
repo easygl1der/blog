@@ -1,0 +1,137 @@
+---
+title: "用 Codex /goal 跑长任务"
+description: "A practical note on using Codex /goal for long running autonomous tasks."
+date: "2026-06-02"
+type: "guide"
+tags: [codex, goal, automation, workflow]
+status: "published"
+---
+
+# 用 Codex /goal 跑长任务
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">4 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    `/goal` 适合把一个明确结果交给 Codex 长时间推进：它会围绕目标持续工作，直到完成、真正阻塞，或被你中断。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">goal</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+  </div>
+</div>
+
+## Summary
+
+Codex 的 `/goal` 指令可以把一次普通对话变成目标驱动的长任务。只要目标足够清楚，Codex 会持续规划、执行、验证和继续推进，而不是每完成一个小步骤就停下来等你再次确认。
+
+---
+
+## What This Solves
+
+普通对话很适合问答、单次修改和短操作，但遇到需要连续推进的任务时，容易变成反复提示：跑一段、停一下、再让它继续。`/goal` 的价值是把“我要完成什么”提升成一个持续目标，让 Codex 可以围绕这个目标自动续跑。
+
+你观察到的关键点是：一次 goal 可以连续跑一个小时以上，Codex 会在同一个目标下不断尝试下一步，直到任务真正处理完。它不会因为完成了某个子步骤就自然停止，也不会要求你每几分钟手动说一次“继续”。
+
+## Who This Is For
+
+这篇笔记适合已经在用 Codex 做代码、部署、文档、排错或长流程自动化的人。尤其适合那些任务边界明确、步骤很多、需要工具验证，而且你希望 Codex 自己把事情推进到终点的场景。
+
+## Prerequisites
+
+- 你正在使用支持 `/goal` 的 Codex 环境。
+- 目标本身要能被描述成一个可完成的结果，而不是开放式闲聊。
+- Codex 需要有足够权限访问相关文件、命令、浏览器、部署工具或文档来源。
+- 对高风险操作，例如回滚 git、清空状态、改 ignore 规则或删除文件，仍然要保留人工确认。
+
+<Info>
+这里记录的是使用经验和操作模型，不是完整命令手册。不同 Codex 版本的 UI 文案和具体限制可能会变化，但“目标驱动、持续推进、完成或阻塞才收束”是 `/goal` 最值得记住的用法。
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="把任务写成明确目标">
+    使用 `/goal` 时，不要只写“帮我看看”或“继续优化”。更好的写法是直接说明完成态，例如“修复这个测试失败，跑通相关测试，并总结改动”。
+
+```text
+/goal 修复当前仓库的登录页 E2E 测试失败，完成后运行相关 Playwright 测试并总结改动。
+```
+  </Step>
+  <Step title="给出边界和验收标准">
+    长任务最怕目标含糊。可以在 goal 里顺手写清楚哪些文件能改、哪些操作要先问、最终要跑什么验证。
+
+```text
+/goal 把这次部署问题排查到可访问为止。可以修改 Caddy 配置和应用环境变量；不要执行 git reset、删除文件或改 DNS。完成后给出访问 URL 和验证命令结果。
+```
+  </Step>
+  <Step title="让 Codex 连续执行">
+    goal 创建后，Codex 会围绕目标持续工作：读代码、查配置、运行命令、修复错误、再验证。你不需要在每个小步骤后手动发“继续”，除非你想改变方向、补充约束或中止任务。
+  </Step>
+  <Step title="中途只补充真正影响方向的信息">
+    如果你发现 Codex 缺少账号、端口、目标 URL、部署平台或业务判断，可以直接补一句。不要频繁把它拉回已经在处理的局部步骤，否则会削弱 goal 的连续性。
+  </Step>
+  <Step title="让它以验证结果收尾">
+    一个好的 goal 不只是“改完”，而是“改完并验证”。把测试、构建、部署、浏览器检查、日志检查或最终产物写进目标，Codex 就更容易把任务收束在可确认的结果上。
+  </Step>
+</Steps>
+
+<Tip>
+写 `/goal` 时，把它当成给一个工程师派工：目标、边界、可用权限、禁止事项、验收方式都说清楚。越像一个可交付任务，Codex 越能长时间稳定推进。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+目标太大但没有完成定义时，Codex 可能会持续探索，却很难判断什么时候该停。比如“把项目做好”不如“修复首页移动端布局错位，截图验证 390px 和 1440px 视口”。
+</Warning>
+
+<Warning>
+如果目标依赖外部账号、验证码、付款、私有权限或只有你知道的业务判断，Codex 可能会进入阻塞状态。此时应该补充缺失信息，而不是反复让它继续尝试同一条路。
+</Warning>
+
+<Warning>
+长时间运行不等于可以放任高风险操作。涉及 git 回滚、清空工作区、删除文件、修改 ignore 规则、生产部署或不可逆数据操作时，最好在目标里明确要求先征求确认。
+</Warning>
+
+<Warning>
+如果你在 goal 运行中不断追加不相关需求，原目标会变得松散。更好的做法是让当前 goal 完成后，再为新任务开一个新的 goal。
+</Warning>
+
+## Final Checklist
+
+- [ ] 目标写成了一个可完成的结果，而不是泛泛的探索。
+- [ ] 写清楚了允许 Codex 自动做什么，以及哪些操作必须先问。
+- [ ] 包含测试、构建、截图、部署或其他可验证的完成标准。
+- [ ] 中途只补充会改变方向或解除阻塞的信息。
+- [ ] 完成后检查 Codex 的最终总结、验证结果和剩余风险。
+
+## What To Remember
+
+`/goal` 的核心不是“让 Codex 多跑一会儿”，而是把一次交互改成目标驱动的执行循环。它适合那些你已经知道终点、但中间有很多步骤和不确定性的任务。写清楚完成态后，Codex 可以连续跑很久，自己推进、自己验证，直到任务完成或确实需要你提供新的外部信息。
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">goal</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+    </div>
+    **Related:** [[codex]], [[agent-workflow]], [[long-running-tasks]]
+  </Card>
+</div>

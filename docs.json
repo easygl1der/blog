@@ -30,7 +30,8 @@
                 "pages": [
                   "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps",
                   "docs/notes/2026/06/2026-06-02-cloudflare-ip-dns",
-                  "docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp"
+                  "docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp",
+                  "docs/notes/2026/06/2026-06-02-codex-goal"
                 ]
               }
             ]
