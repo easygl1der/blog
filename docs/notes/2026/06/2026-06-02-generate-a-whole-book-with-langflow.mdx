@@ -1,0 +1,426 @@
+---
+title: "Generate A Whole Book With LangFlow"
+description: "A detailed guide to the LangFlow pipeline that turns a PDF or arXiv source into a complete LaTeX book project with extraction, repair, compilation, and downloadable outputs."
+date: "2026-06-02"
+type: "guide"
+tags: [langflow, latex, mineru, book-generation, automation]
+status: "published"
+---
+
+# Generate A Whole Book With LangFlow
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">15 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    用 LangFlow 把一本 PDF 或 arXiv 文档自动拆成结构化中间表示，再生成完整 LaTeX 项目、编译 PDF、修复错误，并把结果打包输出。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">latex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mineru</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+  </div>
+</div>
+
+## Summary
+
+这篇笔记记录我如何把“生成一整本书”做成一个 LangFlow flow。这里的“生成”不是只让 LLM 从零写内容，而是把一本已有 PDF、arXiv 论文或书稿转成可维护的 LaTeX 项目：抽取正文、章节、公式、表格、图片，生成 `main.tex`，调用编译服务产出 PDF，并在失败时自动降级修复。
+
+最终的画布看起来很简单：输入节点、一个自定义处理组件、输出节点。但真正的流程藏在中间的 Custom Component 里：输入解析、MinerU 抽取、JSON 到 IR、IR 到 LaTeX、图片归一化、表格安全渲染、编译、确定性修复、可选 LLM 修复、打包输出，每一步都可以单独定位问题。
+
+---
+
+## What This Solves
+
+这个 flow 解决的是一个实际工程问题：如何把一本长文档变成“可以重新编译、可以继续编辑、可以交给后续工具处理”的完整书稿工程。
+
+普通 OCR 或 PDF 转 Markdown 只能得到一堆文本，通常会丢掉章节层级、公式、图表、文件结构和可编译性。这个 LangFlow flow 的目标更高：输入一个 PDF、arXiv ID、PDF URL 或上传文件，输出一个包含 `main.tex`、`source_ir.json`、图片目录、编译日志、最终 PDF 和 zip 包的项目。
+
+<Info>
+这个实现的核心不是“让 LLM 一次性写完整本书”，而是先把 PDF 变成结构化 IR，再用确定性程序生成 LaTeX。LLM 只作为最后的修复兜底，而不是主路径。
+</Info>
+
+## Who This Is For
+
+这篇笔记适合未来的我、同学或队友，用来理解这个 LangFlow flow 每个步骤到底在做什么，以及为什么它能处理一整本长文档。
+
+它默认读者已经知道 LangFlow 的基本概念：Chat Input、Custom Component、Chat Output、组件输入输出、环境变量和 API key。读者不需要从零理解 MinerU 或 LaTeX 编译器，但需要知道 PDF 抽取和 LaTeX 编译都可能失败，因此整个流程必须保留中间产物和错误报告。
+
+## Prerequisites
+
+- 一个可运行的 LangFlow 实例。
+- 一个 MinerU API token，用于把 PDF 抽取成 JSON。
+- 一个 LaTeX sidecar 编译服务，例如 `http://latex-compiler:8000/compile`。
+- 一个持久工作目录，例如 `/home/yueyh/data/pdf2latex`。
+- 可选的 OpenAI-compatible LLM endpoint，用于最后的 LaTeX 修复兜底。
+- 输入可以是 arXiv ID、PDF URL、服务器上的 PDF 路径，或 LangFlow Playground 上传的 PDF 文件。
+
+<Warning>
+公开笔记里不要写真实 API key、私有域名、真实用户目录或未公开的论文文件。可以写 `$LANGFLOW_API_KEY`、`MINERU_API_KEY`、`https://langflow.example.com` 这类替代值。
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="把 LangFlow 画布压缩成三节点">
+    整个 flow 的画布层只有三个节点：
+
+    ```text
+    PDF JSON LaTeX V10 Input
+    -> PDF JSON LaTeX Compile Repair V10
+    -> PDF JSON LaTeX V10 Output
+    ```
+
+    第一节点负责接收 Playground 输入。第二节点是 Custom Component，名字是 `PDF JSON LaTeX Compile Repair V10`，内部封装完整流水线。第三节点把 JSON 结果和附件返回给用户。
+
+    这种设计的好处是画布非常稳定。LangFlow 不需要维护几十条边和几十个小节点，复杂逻辑集中在一个可版本化、可复制、可回滚的 Python component 里。
+  </Step>
+
+  <Step title="定义 Custom Component 的输入参数">
+    中间组件暴露了这些关键输入：
+
+    ```text
+    input_message       PDF / arXiv / URL / Path
+    base_work_dir       Base Work Dir
+    mineru_api_token    MinerU API Token
+    compiler_url        Compiler URL
+    force_mineru        Force MinerU Rerun
+    use_llm_repair      Use LLM Repair If Needed
+    inject_compile_error Inject Compile Error Self-Test
+    llm_base_url        OpenAI-compatible Base URL
+    append_v1           Append /v1
+    llm_api_key         OpenAI-compatible API Key Variable
+    llm_model           LLM Model
+    ```
+
+    这些参数把运行时依赖都显式暴露出来。`force_mineru` 用于绕过缓存重新抽取；`inject_compile_error` 用于自测修复链路；`use_llm_repair` 控制是否在确定性修复失败后调用 LLM。
+  </Step>
+
+  <Step title="从输入中解析 PDF 来源">
+    组件先读取 `input_message` 的文本和文件列表。它支持几类输入：
+
+    - 直接输入 arXiv ID，例如 `2506.09421`。
+    - 输入 arXiv 页面或 PDF URL。
+    - 输入服务器上的 `.pdf` 路径。
+    - 在 LangFlow Playground 上传 PDF 文件。
+
+    解析之后会生成一个 `source_key`。这个 key 用来命名缓存目录、IR 目录和任务产物，避免每次运行都重新抽取同一本书。
+  </Step>
+
+  <Step title="下载或定位 PDF">
+    如果输入是 arXiv ID，flow 会转成标准 PDF 地址：
+
+    ```text
+    https://arxiv.org/pdf/<arxiv-id>.pdf
+    ```
+
+    如果输入是普通 URL，flow 会下载 PDF 到工作目录。如果输入是本地路径，就直接使用该文件。这里的原则是先把所有输入统一成一个本地 PDF 路径，后面的 MinerU 阶段只关心文件，不再关心用户最初是怎么传入的。
+  </Step>
+
+  <Step title="检查 MinerU 抽取缓存">
+    对于长文档，重复 OCR 和版面分析很慢，也浪费 token 和 API 调用。所以 flow 会先检查：
+
+    ```text
+    <base_work_dir>/mineru_v10/<source_key>/extracted
+    <base_work_dir>/mineru_probe/<source_key>/extracted
+    ```
+
+    只要目录里已经有 MinerU JSON，就直接复用缓存。只有 `force_mineru=true` 或没有缓存时，才重新请求 MinerU。
+  </Step>
+
+  <Step title="调用 MinerU 生成 JSON 包">
+    没有缓存时，组件会向 MinerU 请求上传 URL，上传 PDF，轮询批处理结果，拿到 `full_zip_url` 后下载 zip，并解压到 `extracted` 目录。
+
+    这一阶段的输出不是 Markdown，而是一组 JSON 文件。后续最关键的是：
+
+    ```text
+    content_list.json
+    content_list_v2.json
+    layout.json
+    model.json
+    ```
+
+    `content_list.json` 给出文档顺序，`layout.json` 提供版面和图表 caption，`model.json` 帮助恢复表格，`content_list_v2.json` 可用于统计 inline formula。
+  </Step>
+
+  <Step title="把 MinerU JSON 变成结构化 IR">
+    这是整条流水线最重要的一步。组件不会直接从 MinerU JSON 拼 LaTeX，而是先生成自己的中间表示 `source_ir.json`。
+
+    IR 里包含：
+
+    ```json
+    {
+      "schema": "mineru-json-ir-v10.0",
+      "metadata": {
+        "title": "...",
+        "authors_raw": []
+      },
+      "sections": [],
+      "figures": [],
+      "tables": [],
+      "equations": [],
+      "stats": {},
+      "diagnostics": []
+    }
+    ```
+
+    这一步会识别 document title、heading、paragraph、figure、table、display equation、footnote 等角色，把它们按章节顺序放入 `sections`。这比直接生成 LaTeX 更可靠，因为 IR 可以单独调试，也可以以后换成 HTML、Markdown 或 EPUB 输出。
+  </Step>
+
+  <Step title="恢复章节结构">
+    flow 用 `text_level` 和标题文本判断章节级别。第一个标题通常作为整本书或论文标题，后面的标题才进入 section。
+
+    数字标题会被映射成层级，例如：
+
+    ```text
+    1 Introduction      -> section
+    1.1 Motivation      -> subsection
+    1.1.1 Background    -> subsubsection
+    ```
+
+    无法判断时，保守地使用 MinerU 提供的 `text_level`。每个 section 都保留 page、title、level 和 blocks，方便后续定位错误。
+  </Step>
+
+  <Step title="恢复公式、图、表的引用对象">
+    IR 不只是文本列表。它会为公式、图片和表格生成稳定 ID：
+
+    ```text
+    fig:1, fig:2, ...
+    tab:1, tab:2, ...
+    eq:1, eq:2, ...
+    ```
+
+    图片会保存原始路径、完整路径和 caption。表格会保存 caption 与 HTML 或文本内容。公式会保存 LaTeX 字符串。这样写 `main.tex` 时可以按 block 角色分别渲染，而不是把所有东西都当成段落。
+  </Step>
+
+  <Step title="归一化图片并保留原图">
+    PDF 抽取出的图片格式可能是 jpg、png，也可能尺寸异常或模式不兼容。flow 会把图片复制到项目的 `images/` 目录，并尽量用 Pillow 转成可被 XeLaTeX 稳定包含的 PNG。
+
+    如果图片太小、损坏或无法转换，flow 不会让整本书失败，而是在 LaTeX 里放一个 framed notice，同时把原图打包进项目。这样最终读者至少知道图片应该出现在哪里，也能在 zip 里找到原始文件。
+  </Step>
+
+  <Step title="安全渲染表格">
+    表格是最容易炸 LaTeX 的部分。这个 flow 不把复杂 OCR 表格强行完整还原，而是采用安全策略：
+
+    - 如果 MinerU 给出 HTML table，先用一个简单 parser 提取行列。
+    - 表格最大列数和最大行数有限制，避免超宽表格破坏页面。
+    - 单元格会去掉危险 TeX 控制符、未配对下划线、花括号和过长内容。
+    - 太复杂的表格会降级成 framed text，并提示完整内容在 `source_ir.json`。
+
+    这个选择牺牲了一部分视觉还原，但换来“整本书能编译”。对于长文档流水线，可编译性比一次性漂亮更重要。
+  </Step>
+
+  <Step title="从 IR 生成 rich 模式 main.tex">
+    第一版 LaTeX 是 rich 模式。它会写入：
+
+    ```latex
+    \documentclass[11pt]{article}
+    \usepackage[a4paper,margin=1in]{geometry}
+    \usepackage{fontspec}
+    \usepackage{graphicx}
+    \usepackage{amsmath,amssymb}
+    \usepackage{booktabs,tabularx,array}
+    \usepackage[hidelinks]{hyperref}
+    ```
+
+    正文按 IR 的 sections 顺序写出。段落走文本转义，公式走 `equation`，图片走 `figure` 和 `includegraphics`，表格走 `table` 和 `tabularx` 或 fallback。
+
+    对中文文档，模板优先尝试 `Noto Serif CJK SC`，找不到时回退到 `Latin Modern Roman`。这让同一个 flow 可以处理英文论文和中文书稿。
+  </Step>
+
+  <Step title="调用 sidecar 编译服务">
+    生成 `main.tex` 后，flow 不在 LangFlow 进程里直接跑 TeX，而是调用独立的编译服务：
+
+    ```http
+    POST /compile
+    {
+      "tex_path": "/path/to/project/main.tex"
+    }
+    ```
+
+    编译服务返回 `success`、`returncode`、`stdout` 和 `stderr`。组件还会读取 `main.log`、`main.blg` 等日志，合并成 `compile.rich.full.log`。
+
+    把编译器放到 sidecar 的好处是隔离依赖。LangFlow 负责 orchestrate，LaTeX 镜像负责装 TeX Live、字体和系统包。
+  </Step>
+
+  <Step title="解析编译报告而不是只看返回码">
+    LaTeX 的返回码并不总是足够可信。有时 PDF 已经生成，但日志里还有 missing file、undefined reference、duplicate label 或 fatal error。
+
+    所以 flow 会解析日志，并输出结构化错误报告：
+
+    ```json
+    {
+      "fatal_errors": [],
+      "missing_files": [],
+      "missing_packages": [],
+      "undefined_citations": [],
+      "undefined_references": [],
+      "duplicate_labels": []
+    }
+    ```
+
+    最终判断不是简单的 `returncode == 0`，而是看 PDF 是否存在，以及错误报告里是否还有需要处理的问题。
+  </Step>
+
+  <Step title="rich 模式失败后进入确定性修复">
+    如果 rich 模式编译失败，或日志显示还需要人工注意，flow 会保存失败版本：
+
+    ```text
+    main.rich.failed.tex
+    ```
+
+    然后重新从 IR 生成 conservative 模式的 `main.tex`。这个模式会更保守：
+
+    - 图片用 framed notice，而不是强行 include。
+    - 公式可以降级成 verbatim。
+    - 表格优先用文本框而不是复杂 tabular。
+    - 文档开头加入 repair mode notice。
+
+    这是整个 flow 的关键工程思想：先追求高保真，如果失败，就自动降低风险，保证整本书至少能编译出来。
+  </Step>
+
+  <Step title="必要时调用 LLM 修复 LaTeX">
+    如果确定性修复仍然失败，并且 `use_llm_repair=true`，flow 会把精简后的错误报告和当前 `main.tex` 发送给 OpenAI-compatible endpoint。
+
+    给 LLM 的要求很严格：
+
+    ```text
+    Repair this LaTeX main.tex so it compiles with XeLaTeX.
+    Return ONLY complete LaTeX source, no markdown fences.
+    Do not add external files.
+    If an equation or table is broken, degrade it to escaped text or a simple framed notice.
+    ```
+
+    LLM 修复返回后，flow 会保存 `main.before_llm_repair.tex`，覆盖 `main.tex`，再编译一次。这样每次修复都有前后版本可查。
+  </Step>
+
+  <Step title="打包完整项目而不只返回 PDF">
+    编译结束后，flow 会把整个 project 目录打成 zip。项目通常包含：
+
+    ```text
+    main.tex
+    main.pdf
+    source_ir.json
+    images/
+    compile.rich.full.log
+    compile.deterministic.full.log
+    main.rich.failed.tex
+    main.before_llm_repair.tex
+    ```
+
+    返回 zip 比只返回 PDF 更重要，因为用户后续可以继续编辑 LaTeX、检查 IR、替换图片、查看日志，也可以把项目交给其他自动化流程继续处理。
+  </Step>
+
+  <Step title="把结果作为 Message 返回给 LangFlow">
+    最后组件返回一个 JSON 字符串，并把关键文件作为附件挂到 `Message.files`。输出 JSON 会包含：
+
+    ```json
+    {
+      "ok": true,
+      "source_key": "...",
+      "mineru_source": "cache",
+      "ir_path": ".../mineru_ir_v10.json",
+      "project_dir": ".../project",
+      "tex_path": ".../main.tex",
+      "zip_path": ".../project.zip",
+      "pdf_path": ".../main.pdf",
+      "compile_attempts": [],
+      "repair_methods": [],
+      "image_status_summary": {},
+      "stats": {},
+      "diagnostics": []
+    }
+    ```
+
+    Chat Output 节点只负责把这个 Message 展示出来。用户看到的是一个结果报告和可下载文件；开发者看到的是完整 pipeline trace。
+  </Step>
+</Steps>
+
+## Flow Anatomy
+
+这条 flow 可以分成两层理解。
+
+第一层是 LangFlow canvas：
+
+```text
+Chat Input
+-> Custom Component
+-> Chat Output
+```
+
+第二层是 Custom Component 内部 pipeline：
+
+```text
+input
+-> source_key
+-> PDF resolver
+-> MinerU cache check
+-> MinerU extraction
+-> JSON loader
+-> JSON to IR
+-> image normalization
+-> table/equation rendering
+-> rich main.tex
+-> compile
+-> deterministic conservative repair
+-> optional LLM repair
+-> zip project
+-> Message output
+```
+
+这种拆法让我可以把 LangFlow 当 orchestration UI，把复杂工程逻辑放进一个组件。调试时不用在画布上追几十条边，只需要看 `stage`、`compile_attempts`、`repair_methods` 和中间文件。
+
+## Common Failure Modes
+
+<Warning>
+**MinerU 没有返回 `content_list.json`。** 这时 flow 无法建立有序 IR，会直接报错。修复方式是检查 MinerU zip 内容，或者对该 PDF 重新抽取。
+</Warning>
+
+<Warning>
+**图片文件存在但无法被 LaTeX include。** 常见原因是图片格式、尺寸、颜色模式或路径问题。这个 flow 的做法是先复制原图，再尽量转 PNG；转不了就用 framed notice，同时把原图保存在 zip 中。
+</Warning>
+
+<Warning>
+**表格导致 LaTeX 编译失败。** OCR 表格经常有未闭合标签、过宽列、奇怪符号和数学片段。不要强求一次性还原复杂表格，先让它降级成文本框，并把完整内容留在 `source_ir.json`。
+</Warning>
+
+<Warning>
+**只看编译返回码会误判。** 有时 PDF 已经生成但引用、文件或 package 仍然有问题。需要解析日志，并把 fatal errors、missing files、undefined references 等拆成结构化报告。
+</Warning>
+
+<Warning>
+**LLM 修复不能作为主路径。** 如果每次都靠 LLM 改 `main.tex`，结果不可控、慢且难复现。正确顺序是先 JSON 到 IR，再确定性生成，再确定性降级，最后才让 LLM 兜底。
+</Warning>
+
+## Final Checklist
+
+- [ ] LangFlow 画布只有输入、Custom Component、输出三类核心节点，边关系清楚。
+- [ ] Custom Component 的输入参数包含 PDF 来源、工作目录、MinerU token、编译服务 URL 和修复开关。
+- [ ] PDF 输入能统一解析为本地 PDF 路径，并生成稳定 `source_key`。
+- [ ] MinerU 抽取结果会缓存，重复运行不会无意义重新 OCR。
+- [ ] `source_ir.json` 包含 metadata、sections、figures、tables、equations、stats 和 diagnostics。
+- [ ] `main.tex` 可以从 IR 重新生成，而不是手工拼接一次性文本。
+- [ ] 编译日志会保存成 `compile.<tag>.full.log`。
+- [ ] rich 编译失败后会自动进入 conservative regeneration。
+- [ ] LLM 修复只作为最后兜底，并保存修复前版本。
+- [ ] 最终输出包含 PDF、zip、LaTeX、IR 和日志路径。
+
+## What To Remember
+
+生成一整本书的关键不是把任务交给一个大 prompt，而是把长文档处理拆成可恢复、可检查、可降级的工程流水线。
+
+LangFlow 在这里的价值是把输入、参数、运行和输出包装成一个可交互的 flow；真正保证稳定性的，是中间的 IR、缓存、日志、确定性渲染和分层修复。只要 IR 可靠，LaTeX、PDF、Markdown、HTML 或 EPUB 都只是不同的渲染目标。
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** langflow · latex · mineru · book-generation · automation  
+  **Related:** [[Deploy LangFlow On A VPS And Build Flows Through MCP]] · [[Recreate Perplexity Search With LangFlow]]
+</Card>
