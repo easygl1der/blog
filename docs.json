@@ -24,6 +24,12 @@
                   "docs/notes/2026/05/2026-05-31-using-the-perplexity-like-langflow-search-flows",
                   "docs/notes/2026/05/2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows"
                 ]
+              },
+              {
+                "group": "June",
+                "pages": [
+                  "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps"
+                ]
               }
             ]
           }

@@ -1,0 +1,237 @@
+---
+title: "Deploy X-UI With Caddy HTTPS On A VPS"
+description: "A beginner-friendly guide to running an X-UI panel behind Caddy HTTPS and creating subscription links for personal proxy clients."
+date: "2026-06-01"
+type: "guide"
+tags: [vps, x-ui, caddy, https, proxy]
+status: "published"
+---
+
+# Deploy X-UI With Caddy HTTPS On A VPS
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-01</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">7 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Use a domain, Caddy, and X-UI to make a self-hosted personal proxy panel accessible over HTTPS with client subscription support.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">x-ui</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">caddy</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">https</span>
+  </div>
+</div>
+
+## Summary
+
+This guide shows how to deploy an X-UI management panel on a VPS, put Caddy in front of it, and use a normal HTTPS domain instead of exposing the panel over plain HTTP. It also explains how to create an inbound node and generate a subscription link that clients such as Clash Verge, Shadowrocket, v2rayN, or Sing-Box can update with one click.
+
+The examples use generic domains such as `vpn.example.com`. Replace them with your own domain and VPS IP when you follow the steps.
+
+---
+
+## What This Solves
+
+After buying a VPS, a beginner usually runs into two problems:
+
+- The X-UI panel is often exposed through plain HTTP or a raw IP address, which is not appropriate for sending an admin username and password over the public internet.
+- Client apps are easier to manage through one subscription URL instead of manually copying every single node configuration.
+
+The goal is to run X-UI locally on the VPS, expose the panel through Caddy over HTTPS, and configure X-UI so it can provide subscription links for your own devices.
+
+<Info>
+This note is written for a personal self-hosted setup. Use it only in ways that comply with the laws, service terms, and network policies that apply to you.
+</Info>
+
+## Who This Is For
+
+This is for someone who already has a VPS and a domain name, but has not yet built a clean X-UI setup before. You should be comfortable copying commands into an SSH terminal, editing one configuration file, and changing DNS records in your domain provider.
+
+You do not need to understand Caddy internals. In this setup, Caddy has one job: accept HTTPS traffic for your domain and forward it to the X-UI panel running on the VPS.
+
+## Prerequisites
+
+- A VPS with a public IPv4 address.
+- A domain managed by Cloudflare or another DNS provider.
+- SSH access to the VPS as a sudo-capable user.
+- A Debian or Ubuntu style system with `apt`.
+- Ports `80` and `443` open on the VPS firewall and provider security group.
+- One private panel domain, for example `vpn.example.com`.
+- One high panel port, for example `9604`.
+- One node port, for example `20853`, if you expose the node directly.
+
+<Warning>
+Do not put your real domain, admin username, password, subscription path, or private WebSocket path into public notes. Use examples like `vpn.example.com`, `/private-sub-path/`, and `/ws-private-path` when documenting the process.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Create the DNS record">
+    In Cloudflare, open your domain and go to **DNS -> Records**. Add an `A` record:
+
+    - **Type:** `A`
+    - **Name:** `vpn`
+    - **IPv4 address:** your VPS public IP
+    - **Proxy status:** DNS only
+
+    If your root domain is `example.com`, this creates `vpn.example.com`.
+
+    <Warning>
+    Keep the record as DNS only while Caddy requests the Let's Encrypt certificate. If Cloudflare proxy mode is enabled too early, HTTP validation on port `80` may fail.
+    </Warning>
+  </Step>
+
+  <Step title="Install X-UI on the VPS">
+    SSH into the VPS and run the installer used by your chosen X-UI distribution:
+
+    ```bash
+    bash <(curl -Ls https://raw.githubusercontent.com/morytyann/x-ui/master/install.sh)
+    ```
+
+    During setup, choose a custom admin username, a strong password, and a high panel port such as `9604`. Avoid leaving the panel on a common default port.
+  </Step>
+
+  <Step title="Install Caddy">
+    Install Caddy from the official package repository:
+
+    ```bash
+    sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+    sudo apt update
+    sudo apt install -y caddy
+    ```
+
+    Caddy will run as a system service and can automatically request and renew HTTPS certificates.
+  </Step>
+
+  <Step title="Reverse proxy the X-UI panel">
+    Open the Caddy configuration file:
+
+    ```bash
+    sudo nano /etc/caddy/Caddyfile
+    ```
+
+    Add a site block for your panel domain. Replace `vpn.example.com` with your own domain and `9604` with your actual X-UI panel port:
+
+    ```caddyfile
+    vpn.example.com {
+        reverse_proxy localhost:9604
+    }
+    ```
+
+    Save the file, then reload Caddy:
+
+    ```bash
+    sudo systemctl reload caddy
+    ```
+
+    Open `https://vpn.example.com` in a browser. If DNS, ports, and Caddy are correct, the X-UI login page should load over HTTPS.
+  </Step>
+
+  <Step title="Create an inbound node">
+    In the X-UI panel, open **Inbounds** and create a new inbound. A beginner-friendly starting point is:
+
+    - **Remark:** `Hong Kong VLESS WS`
+    - **Protocol:** `vless`
+    - **Port:** `20853`
+    - **Transmission:** `ws`
+    - **Path:** `/ws-private-path`
+
+    Make sure the VPS provider security group and the server firewall allow the node port you selected.
+  </Step>
+
+  <Step title="Configure the subscription settings">
+    Open **Panel Settings** in X-UI and find the subscription settings:
+
+    - **Subscription path:** use a private path such as `/private-sub-path/`
+    - **Subscription domain:** use your HTTPS panel domain, for example `https://vpn.example.com`
+
+    Save the settings and restart the panel from the X-UI interface.
+  </Step>
+
+  <Step title="Add the subscription to your client">
+    Go back to **Inbounds**, open the action menu for the inbound, and copy either the single node link or the subscription link.
+
+    In your client app, add a remote subscription profile and paste the subscription URL. Common clients include Clash Verge, Shadowrocket, v2rayN, and Sing-Box.
+  </Step>
+</Steps>
+
+<Tip>
+For a more advanced setup, you can also proxy the WebSocket path through Caddy on port `443`, so both panel and node traffic share HTTPS entry points. For a first deployment, a direct node port is simpler to understand and easier to debug.
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+If `https://vpn.example.com` does not open, check DNS first. The `A` record must point to the VPS public IP, and the record should initially be DNS only if you rely on Caddy's HTTP certificate challenge.
+</Warning>
+
+<Warning>
+If Caddy cannot get a certificate, verify that ports `80` and `443` are open in both the VPS operating system firewall and the cloud provider security group. Certificate issuance depends on the public internet reaching Caddy.
+</Warning>
+
+<Warning>
+If the client cannot connect to the node, the most common cause is a closed node port. Open the chosen port, such as `20853`, in the provider security group and any local firewall rules.
+</Warning>
+
+<Warning>
+If the X-UI panel works through `localhost:9604` but not through the domain, the issue is likely in Caddy, DNS, or firewall configuration rather than X-UI itself.
+</Warning>
+
+<Tip>
+After the panel is reachable, change the default login path in X-UI to a private path such as `/panel-login-random/`. This reduces noise from automated scanners that probe common admin URLs.
+</Tip>
+
+<Tip>
+Check whether BBR is enabled with:
+
+```bash
+sysctl net.ipv4.tcp_congestion_control
+```
+
+If the output is `bbr`, the server is using BBR congestion control, which often improves throughput on VPS networks.
+</Tip>
+
+## Final Checklist
+
+- [ ] The DNS `A` record points to the VPS public IP.
+- [ ] The panel domain resolves and opens with `https://`.
+- [ ] Caddy reloads without errors.
+- [ ] X-UI uses a strong admin password and a non-default panel port.
+- [ ] The X-UI login path is changed from the default if the panel is public.
+- [ ] The node port is open in the provider security group and local firewall.
+- [ ] The subscription URL imports successfully into the client app.
+- [ ] The note or documentation does not expose your real domain, password, private paths, or subscription URL.
+
+## What To Remember
+
+The clean mental model is: DNS points your domain to the VPS, Caddy receives HTTPS traffic on `80` and `443`, and Caddy forwards panel requests to X-UI on a local high port. X-UI then manages the inbound node and generates subscription links for clients.
+
+For beginners, debug the setup layer by layer: DNS first, then firewall, then Caddy, then X-UI, then the client subscription.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide  
+    **Status:** published  
+    **Date:** 2026-06-01
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">x-ui</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">caddy</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">https</span>
+    </div>
+    **Related:** [[VPS operations]], [[Caddy reverse proxy]], [[Self-hosted proxy setup]]
+  </Card>
+</div>
