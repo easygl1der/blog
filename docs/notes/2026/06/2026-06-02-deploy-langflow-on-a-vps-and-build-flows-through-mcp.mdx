@@ -1,0 +1,365 @@
+---
+title: "Deploy LangFlow On A VPS And Build Flows Through MCP"
+description: "A beginner-friendly guide to running LangFlow on a VPS with Docker, exposing it safely, and using API plus MCP tools to create and operate flows."
+date: "2026-06-02"
+type: "guide"
+tags: [langflow, vps, docker, mcp, automation]
+status: "published"
+---
+
+# Deploy LangFlow On A VPS And Build Flows Through MCP
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">10 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Run LangFlow as a persistent VPS service, then let Codex or another MCP client create, edit, and run flows through reproducible API calls.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">docker</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+  </div>
+</div>
+
+## Summary
+
+This note records a practical way to host LangFlow on a VPS and make it useful from an AI coding agent. The server side runs LangFlow in Docker Compose, while the client side uses `x-api-key` authenticated REST calls and MCP bridges to list flows, create flows, update flow JSON, run flows, and expose a LangFlow project as MCP tools.
+
+All domains, API keys, project IDs, and flow IDs in this post are example values. Replace them with your own values and keep the real secrets out of public notes.
+
+---
+
+## What This Solves
+
+The goal is to turn LangFlow from a browser-only canvas into a server-side automation platform. After deployment, a beginner should understand three layers:
+
+- **LangFlow server:** runs on the VPS and stores flows.
+- **Public entry point:** a domain such as `https://langflow.example.com` points to the server, usually through a reverse proxy such as Caddy or Nginx.
+- **Automation control plane:** REST APIs and MCP tools let Codex or another agent create and operate flows without clicking through the browser.
+
+<Info>
+Think of the browser UI as the visual editor and the API/MCP layer as the repeatable control surface. The same flow can be edited on the canvas or updated as JSON.
+</Info>
+
+## Who This Is For
+
+This is for a beginner who already has a VPS and wants a persistent LangFlow instance that can be controlled by Codex, Claude Desktop, Cursor, or another MCP-capable client.
+
+It assumes you can SSH into a VPS, install Docker, edit a `compose.yml` file, and set environment variables on your local machine.
+
+## Prerequisites
+
+- A VPS with Docker and Docker Compose installed.
+- A domain or subdomain, for example `langflow.example.com`.
+- A reverse proxy that can forward HTTPS traffic to LangFlow on port `7860`.
+- A strong LangFlow admin password.
+- A long random `LANGFLOW_SECRET_KEY`.
+- A LangFlow API key created from the LangFlow UI.
+- Local tools: `curl`, `jq`, `uvx`, and an MCP-capable client.
+
+<Warning>
+Do not publish your real LangFlow domain, API key, secret key, flow IDs, project IDs, or admin password. Use example values like `langflow.example.com`, `$LANGFLOW_API_KEY`, `$FLOW_ID`, and `$PROJECT_ID` in public writing.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Create the server directory">
+    SSH into the VPS and create a dedicated directory:
+
+    ```bash
+    mkdir -p ~/langflow-docker
+    cd ~/langflow-docker
+    ```
+
+    Keeping the deployment in one directory makes it easier to inspect, restart, and back up.
+  </Step>
+
+  <Step title="Write the Docker Compose file">
+    Create `compose.yml`:
+
+    ```yaml
+    services:
+      langflow:
+        image: docker.io/langflowai/langflow:latest
+        restart: always
+        ports:
+          - "7860:7860"
+        environment:
+          - LANGFLOW_HOST=0.0.0.0
+          - LANGFLOW_CONFIG_DIR=/app/langflow
+          - LANGFLOW_SUPERUSER=admin
+          - LANGFLOW_SUPERUSER_PASSWORD=change-this-password
+          - LANGFLOW_SECRET_KEY=change-this-to-a-long-random-secret
+          - DO_NOT_TRACK=true
+          - LANGFLOW_AUTO_LOGIN=false
+        volumes:
+          - langflow_data:/app/langflow
+
+    volumes:
+      langflow_data:
+    ```
+
+    `LANGFLOW_AUTO_LOGIN=false` matters because a public server should require login instead of silently opening the app.
+  </Step>
+
+  <Step title="Start LangFlow">
+    Start the container:
+
+    ```bash
+    docker compose up -d
+    docker compose ps
+    ```
+
+    Check the health endpoint:
+
+    ```bash
+    curl -fsS http://127.0.0.1:7860/health_check
+    ```
+
+    A healthy server returns JSON similar to:
+
+    ```json
+    {"status":"ok","chat":"ok","db":"ok"}
+    ```
+  </Step>
+
+  <Step title="Expose LangFlow through HTTPS">
+    Point your domain to the VPS, then configure a reverse proxy to forward traffic to LangFlow:
+
+    ```caddyfile
+    langflow.example.com {
+        reverse_proxy localhost:7860
+    }
+    ```
+
+    Reload the proxy after editing the config:
+
+    ```bash
+    sudo systemctl reload caddy
+    ```
+
+    Then open:
+
+    ```text
+    https://langflow.example.com
+    ```
+
+    Log in with the superuser credentials from the Compose file.
+  </Step>
+
+  <Step title="Create a LangFlow API key">
+    In the LangFlow UI, create an API key and store it locally as an environment variable:
+
+    ```bash
+    export LANGFLOW_BASE_URL="https://langflow.example.com"
+    export LANGFLOW_API_KEY="paste-your-key-in-your-shell-or-secret-store"
+    ```
+
+    Test the API without printing the key:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      | jq 'length'
+    ```
+  </Step>
+
+  <Step title="Create or inspect flows through REST">
+    List existing flows:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      | jq '.[] | {id, name, folder_id}'
+    ```
+
+    Create an empty flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X POST \
+      "$LANGFLOW_BASE_URL/api/v1/flows/" \
+      -d '{"name":"API Created Flow","description":"Created from the command line","data":{"nodes":[],"edges":[]}}'
+    ```
+
+    Fetch one flow as JSON:
+
+    ```bash
+    export FLOW_ID="replace-with-flow-id"
+
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      -o /tmp/langflow-flow.json
+    ```
+  </Step>
+
+  <Step title="Edit a flow as JSON">
+    LangFlow stores the canvas as JSON. The safe edit loop is:
+
+    ```text
+    fetch flow -> edit a copy -> validate JSON -> PUT complete flow back -> re-fetch and compare
+    ```
+
+    Save a full updated flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X PUT \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      --data-binary @/tmp/langflow-flow.json
+    ```
+
+    Use `jq` before saving:
+
+    ```bash
+    jq '{id, name, node_count: (.data.nodes | length), edge_count: (.data.edges | length)}' \
+      /tmp/langflow-flow.json
+    ```
+  </Step>
+
+  <Step title="Run and debug flows through API">
+    Run a flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/run/$FLOW_ID?stream=false" \
+      -d '{"inputs":{"input_value":"test input"},"tweaks":{}}' \
+      | jq
+    ```
+
+    For debugging, build only until a specific component:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$FLOW_ID/flow?stop_component_id=ComponentIdHere" \
+      -d '{"inputs":{"input_value":"test input"},"tweaks":{}}'
+    ```
+  </Step>
+
+  <Step title="Expose a LangFlow project as MCP tools">
+    LangFlow can expose a project through an MCP endpoint:
+
+    ```text
+    /api/v1/mcp/project/{project_id}/streamable
+    ```
+
+    Store the project ID in a variable:
+
+    ```bash
+    export PROJECT_ID="replace-with-project-id"
+    ```
+
+    Bridge the streamable HTTP endpoint into a local MCP server with `mcp-proxy`:
+
+    ```bash
+    uvx mcp-proxy \
+      --transport streamablehttp \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$PROJECT_ID/streamable"
+    ```
+
+    In a Codex-style MCP config, the same idea looks like this:
+
+    ```toml
+    [mcp_servers.lf-starter_project]
+    command = "uvx"
+    args = [
+      "mcp-proxy",
+      "--transport",
+      "streamablehttp",
+      "https://langflow.example.com/api/v1/mcp/project/$PROJECT_ID/streamable"
+    ]
+    startup_timeout_sec = 120.0
+    ```
+  </Step>
+
+  <Step title="Use an admin MCP server for direct flow operations">
+    A separate admin MCP server can wrap LangFlow APIs into tools such as `list_flows`, `create_flow`, `replace_flow`, `update_flow`, `run_flow`, and `langflow_health`.
+
+    The client-side config should point at the remote LangFlow base URL and read the API key from a secret source:
+
+    ```toml
+    [mcp_servers.langflow-admin.env]
+    LANGFLOW_BASE_URL = "https://langflow.example.com"
+    LANGFLOW_API_KEY = "$LANGFLOW_API_KEY"
+    LANGFLOW_USE_BROWSEROS = "true"
+    ```
+
+    With that in place, Codex can call MCP tools instead of manually writing every `curl` request.
+  </Step>
+</Steps>
+
+## Common Failure Modes
+
+<Warning>
+If the web page does not open, check DNS, the reverse proxy, and whether port `7860` is reachable from the proxy on the VPS.
+</Warning>
+
+<Warning>
+If API calls return unauthorized, the API key is missing, expired, or sent with the wrong header. LangFlow API calls should use `x-api-key: $LANGFLOW_API_KEY`.
+</Warning>
+
+<Warning>
+If a public note contains a real API key, rotate the key immediately. Do not rely on deleting the text from the latest draft.
+</Warning>
+
+<Warning>
+If flow edits break the canvas, recover from a previously exported flow JSON or re-fetch the last known good version before continuing.
+</Warning>
+
+<Tip>
+Use REST for precise flow edits and MCP for agent ergonomics. MCP is convenient, but the REST API is still the lower-level source of truth when debugging.
+</Tip>
+
+## Final Checklist
+
+- [ ] LangFlow starts with `docker compose up -d`.
+- [ ] `curl http://127.0.0.1:7860/health_check` returns healthy JSON on the VPS.
+- [ ] `https://langflow.example.com` opens through the reverse proxy.
+- [ ] Auto-login is disabled for the public server.
+- [ ] The API key is stored in an environment variable or secret manager.
+- [ ] `GET /api/v1/flows/?get_all=true` works with `x-api-key`.
+- [ ] Flow JSON is fetched and backed up before editing.
+- [ ] MCP project endpoint uses `/api/v1/mcp/project/{project_id}/streamable`.
+- [ ] Public documentation contains example values, not real domains, API keys, project IDs, or flow IDs.
+
+## What To Remember
+
+The durable pattern is: host LangFlow with Docker, put HTTPS in front of it, keep secrets out of the repo, and treat flows as JSON documents that can be created, edited, tested, and run through APIs. MCP then sits on top as a usability layer, letting an AI coding agent operate LangFlow without depending on browser clicks.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">docker</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+    </div>
+    **Related:** [[LangFlow]], [[MCP]], [[API automation]], [[VPS deployment]]
+  </Card>
+</div>
