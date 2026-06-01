@@ -1,0 +1,177 @@
+---
+title: "通过 Vercel 部署网页"
+description: "Vercel deployment works best when the Git repo, build command, output directory, and environment variables are configured clearly."
+date: "2026-06-02"
+type: "guide"
+tags: [vercel, deployment, frontend, website]
+status: "published"
+---
+
+# 通过 Vercel 部署网页
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">5 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Vercel 的核心流程是把代码仓库和构建命令交给平台，让每次提交都能自动生成可访问的网页部署。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vercel</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">deployment</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">frontend</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">website</span>
+  </div>
+</div>
+
+## Summary
+
+通过 Vercel 部署网页时，最稳的路径是先保证本地项目可以构建，再把代码推到 GitHub，然后在 Vercel 里导入仓库并确认 build command、output directory 和环境变量。部署成功后，Preview URL 用来检查效果，确认无误后再发布到 Production 或绑定自己的域名。
+
+---
+
+## What This Solves
+
+本地网页只能在自己的电脑上访问，无法给别人稳定打开。Vercel 解决的是从代码仓库到公网网页的自动化部署问题：代码提交后，Vercel 拉取仓库、安装依赖、运行构建命令、产出静态文件或服务端应用，并给出一个可访问 URL。
+
+这套流程适合个人博客、作品集、文档站、前端应用、Next.js 项目，以及大多数可以通过 `npm run build` 产出网页的项目。
+
+## Who This Is For
+
+这篇笔记适合已经有一个网页项目，并希望快速上线的人。读者需要能使用 Git，把项目推到 GitHub，也需要知道项目的包管理器和构建命令。
+
+## Prerequisites
+
+- 一个可以正常构建的网页项目。
+- 一个 GitHub、GitLab 或 Bitbucket 仓库；这里默认使用 GitHub。
+- 一个 Vercel 账号。
+- 本地安装 Node.js 和项目所需包管理器，例如 npm、pnpm 或 yarn。
+- 如果网页依赖 API key、数据库地址等配置，需要提前准备环境变量。
+
+<Info>
+Vercel 可以部署很多框架，但部署是否成功通常取决于三个字段：安装依赖是否成功、build command 是否正确、output directory 是否正确。
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="先在本地确认项目能构建">
+    在导入 Vercel 之前，先在本地安装依赖并跑一次构建。这样可以把语法错误、依赖缺失、环境变量缺失等问题提前暴露出来。
+
+```bash
+npm install
+npm run build
+```
+
+如果项目使用 pnpm 或 yarn，就使用项目已有的命令，不要强行换包管理器。
+  </Step>
+  <Step title="把代码推到远程仓库">
+    Vercel 最常见的部署方式是连接 Git 仓库。确认本地代码已经提交并推送到默认分支。
+
+```bash
+git status
+git add .
+git commit -m "deploy website"
+git push
+```
+
+提交前要确认没有把密钥、`.env`、本地缓存或构建产物误提交到仓库里。
+  </Step>
+  <Step title="在 Vercel 导入项目">
+    登录 Vercel 控制台，选择 Add New Project，然后从 Git provider 里选择对应仓库。Vercel 会自动识别常见框架，例如 Next.js、Vite、Astro、SvelteKit 或纯静态站点。
+  </Step>
+  <Step title="确认构建配置">
+    检查 Vercel 自动识别出来的设置是否符合项目实际情况。常见配置如下：
+
+```text
+Framework Preset: 根据项目选择，不能确定时先使用自动识别
+Build Command: npm run build
+Output Directory: dist、build、out 或框架默认值
+Install Command: npm install、pnpm install 或 yarn install
+```
+
+Vite 常见输出目录是 `dist`，Create React App 常见输出目录是 `build`，Next.js 通常使用框架默认值。
+  </Step>
+  <Step title="配置环境变量">
+    如果项目需要环境变量，在 Vercel 的 Environment Variables 中添加。注意区分 Preview、Production 和 Development 环境。前端公开变量通常需要框架指定前缀，例如 Vite 的 `VITE_` 或 Next.js 的 `NEXT_PUBLIC_`。
+  </Step>
+  <Step title="发起第一次部署">
+    点击 Deploy 后，Vercel 会拉取代码、安装依赖、运行构建命令并生成部署。成功后会得到一个 Preview URL，可以直接打开检查页面。
+  </Step>
+  <Step title="用 CLI 部署可选预览版本">
+    如果本地已经登录 Vercel CLI，也可以直接从项目目录发起部署。
+
+```bash
+npx --yes vercel whoami
+npx --yes vercel deploy . -y
+```
+
+如果要发布生产环境，需要显式使用生产参数。
+
+```bash
+npx --yes vercel deploy . --prod -y
+```
+  </Step>
+  <Step title="绑定自定义域名">
+    部署成功后，可以在 Vercel Project Settings 的 Domains 里添加自己的域名。域名 DNS 可以托管在 Cloudflare 或其他注册商，再按 Vercel 提示添加 A、CNAME 或 nameserver 配置。
+  </Step>
+</Steps>
+
+<Tip>
+把 Preview 当作检查环境，把 Production 当作正式入口。每次大改之后先看 Preview URL，确认构建、路由、图片、接口和移动端表现都正常，再发布生产环境。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+本地能跑开发服务器，不代表 Vercel 一定能构建。开发命令通常是 `npm run dev`，部署时真正执行的是 `npm run build`。部署前必须本地跑一次 build。
+</Warning>
+
+<Warning>
+环境变量没有配置或命名不对，会导致页面空白、接口请求失败或构建时报错。前端可见变量还需要符合框架的公开变量命名规则。
+</Warning>
+
+<Warning>
+Output Directory 配错时，构建可能成功但部署页面是空的。Vite 常用 `dist`，CRA 常用 `build`，静态导出的 Next.js 可能是 `out`，具体以项目配置为准。
+</Warning>
+
+<Warning>
+使用 Cloudflare 管理域名时，不要同时在多个平台做冲突的 DNS 配置。先确认域名权威 nameserver 在哪里，再按 Vercel 的域名提示添加记录。
+</Warning>
+
+## Final Checklist
+
+- [ ] 本地 `npm run build` 或等价构建命令可以通过。
+- [ ] 代码已经提交并推送到远程仓库。
+- [ ] Vercel 项目导入了正确仓库和分支。
+- [ ] Build Command、Install Command、Output Directory 与项目匹配。
+- [ ] 必要环境变量已经在 Vercel 对应环境中配置。
+- [ ] Preview URL 可以打开并完成主要页面检查。
+- [ ] 需要正式上线时，再部署 Production 或绑定自定义域名。
+
+## What To Remember
+
+Vercel 部署网页不是单纯“上传文件”，而是让平台重复执行一套构建流程。只要仓库、构建命令、输出目录和环境变量是确定的，部署就会稳定；如果部署失败，也优先从这四个地方排查。
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vercel</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">deployment</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">frontend</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">website</span>
+    </div>
+    **Related:** [[cloudflare-ip-dns]], [[frontend-deployment]], [[vercel]]
+  </Card>
+</div>

@@ -1,0 +1,383 @@
+---
+title: "Recreate Perplexity Search With LangFlow"
+description: "A practical guide to building a Perplexity-like search answer engine with LangFlow, SearXNG-style recall, crawler extraction, reranking, and citations."
+date: "2026-06-02"
+type: "guide"
+tags: [langflow, perplexity, search, citations, crawler]
+status: "published"
+---
+
+# Recreate Perplexity Search With LangFlow
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">11 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Build a Perplexity-like search system by separating URL discovery, page reading, evidence ranking, answer generation, and citation validation.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">perplexity</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">search</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">citations</span>
+  </div>
+</div>
+
+## Summary
+
+This note records how I approached a Perplexity-style search replica in LangFlow. The working shape is not one magic "web search" node; it is a pipeline that plans searches, calls a search provider, filters and reranks results, opens selected URLs, chunks evidence, asks an LLM to answer from labeled sources, and checks whether the answer cites known chunks.
+
+All URLs, flow IDs, and service domains below are public-safe examples. The real deployment uses private LangFlow and search endpoints with API keys kept outside the note.
+
+---
+
+## What This Solves
+
+Perplexity feels useful because it combines several behaviors:
+
+- It searches the live web instead of only using model memory.
+- It opens and reads selected pages.
+- It ranks evidence before answering.
+- It returns citations tied to sources.
+- It can expose different API shapes: search-only, chat-style answer, and agent-style tool traces.
+
+The implementation goal was to reproduce that product workflow in LangFlow with inspectable components. The realistic target is a self-controlled Perplexity-like answer engine, not a perfect clone of Perplexity's proprietary index, ranking system, or freshness signals.
+
+<Info>
+The most important design decision was to split discovery from reading: search providers find candidate URLs, while crawler components read the content of those URLs.
+</Info>
+
+## Who This Is For
+
+This is for a future self or teammate who wants to understand how the Perplexity-like LangFlow search system is assembled and how to improve it.
+
+It assumes the reader has:
+
+- A LangFlow server with API access.
+- A search provider such as SearXNG, Brave Search, Serper, Google Programmable Search, or Exa.
+- A crawler or page reader such as an Onyx-style crawler, Firecrawl, Exa content retrieval, or Playwright.
+- An LLM node for the final grounded answer.
+- A way to test flows through the LangFlow playground or REST API.
+
+## Prerequisites
+
+- LangFlow reachable through a local or remote base URL.
+- A LangFlow API key stored as `$LANGFLOW_API_KEY`.
+- A main Sonar-style flow stored as `$FLOW_ID`.
+- Optional project MCP endpoint stored as `$PROJECT_ID`.
+- A search service that can return JSON search results.
+- `curl` and `jq` for command-line testing.
+
+Example shell setup:
+
+```bash
+export LANGFLOW_BASE_URL="https://langflow.example.com"
+export LANGFLOW_API_KEY="set-this-in-your-shell"
+export FLOW_ID="replace-with-main-flow-id"
+```
+
+<Warning>
+Do not publish real LangFlow domains, search domains, API keys, flow IDs, or project IDs. Use `example.com`, `$LANGFLOW_API_KEY`, `$FLOW_ID`, and `$PROJECT_ID` in public notes.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Define the Perplexity-like surfaces">
+    I split the product into three API-shaped flows:
+
+    - **Search API:** returns structured search results.
+    - **Sonar-style API:** searches, reads pages, and answers with citations.
+    - **Agent Web Search API:** lets an agent call `web_search` and `open_url` tools and preserve a step trace.
+
+    This makes the system easier to debug because search-only failures, crawler failures, and answer-generation failures are separate.
+  </Step>
+
+  <Step title="Build the shared search core">
+    The shared search core accepts a query plus optional controls such as domain filters, `max_results`, language, recency, and source preferences.
+
+    The search provider should return normalized records:
+
+    ```json
+    {
+      "title": "Example documentation page",
+      "url": "https://docs.example.com/page",
+      "snippet": "Short search result text",
+      "date": null,
+      "last_updated": null
+    }
+    ```
+
+    At this stage, the flow should not generate an answer. It should only find candidate pages.
+  </Step>
+
+  <Step title="Plan searches before calling the provider">
+    A planner node can turn one user question into better search inputs. For example:
+
+    ```text
+    Compare Firecrawl, Exa, and SearXNG for a LangFlow web search agent.
+    ```
+
+    can become targeted queries for official documentation, GitHub repositories, and recent comparison pages. The planner can also infer domain allowlists when the user asks for official sources.
+  </Step>
+
+  <Step title="Filter and rerank before opening URLs">
+    Search results are candidates, not evidence. Before crawling pages, the flow deduplicates URLs, applies allow or deny filters, boosts official docs and GitHub sources, and keeps only a small set of URLs to open.
+
+    The current MVP uses rule-based scoring. A stronger version should add embeddings, a reranker model, or LLM listwise ranking.
+  </Step>
+
+  <Step title="Read pages with a crawler layer">
+    The crawler is responsible for page content, not discovery. Its job is:
+
+    - Validate URLs and block unsafe internal targets.
+    - Fetch HTML or PDF content.
+    - Clean HTML into readable text.
+    - Extract PDF text when needed.
+    - Use Playwright fallback for JavaScript-heavy pages when appropriate.
+    - Return success or failure metadata per URL.
+
+    The crawler output should include `scrape_successful` and `failure_reason`, so bad pages do not silently poison the answer context.
+  </Step>
+
+  <Step title="Chunk evidence and assign source IDs">
+    After reading pages, the flow converts content into source chunks. Each source and chunk receives a stable citation identifier such as `[1.1]`, `[1.2]`, or `[2.1]`.
+
+    Example context:
+
+    ```text
+    Source [1]
+    Title: Firecrawl Docs
+    URL: https://docs.example.com/firecrawl
+
+    Chunk [1.1]
+    Firecrawl converts web pages into LLM-ready markdown...
+    ```
+
+    This gives the LLM something concrete to cite.
+  </Step>
+
+  <Step title="Keep the LLM answer node separate">
+    The final answer should be generated by a separate LLM node that receives only labeled evidence, not raw unbounded web pages.
+
+    The answer prompt should require:
+
+    - Answer only from provided source chunks.
+    - Use chunk IDs for citations.
+    - Admit insufficient evidence when the chunks do not support a claim.
+    - Avoid citing URLs that are not in the source map.
+  </Step>
+
+  <Step title="Validate citations after generation">
+    The response formatter extracts detected citations, detected URLs, and warning messages.
+
+    A healthy output shape is:
+
+    ```json
+    {
+      "answer": "SearXNG is useful for self-hosted recall, while Firecrawl is useful for page extraction [1.1][2.1].",
+      "detected_chunk_citations": ["1.1", "2.1"],
+      "detected_urls": [],
+      "citation_warnings": []
+    }
+    ```
+
+    Citation validation is what makes the system more Perplexity-like than a generic web-connected chatbot.
+  </Step>
+
+  <Step title="Test through LangFlow API">
+    Run the main flow from the terminal:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "content-type: application/json" \
+      -X POST \
+      --data '{
+        "input_value": "Compare Firecrawl, Exa, and SearXNG for a LangFlow web search agent",
+        "input_type": "chat",
+        "output_type": "chat"
+      }' \
+      "$LANGFLOW_BASE_URL/api/v1/run/$FLOW_ID"
+    ```
+
+    The first check is not whether the prose is beautiful. The first check is whether the response contains an answer, source URLs, chunk citations, and no unexplained citation warnings.
+  </Step>
+</Steps>
+
+## Implementation Shape
+
+The full system can be understood as this pipeline:
+
+```text
+User question
+-> Search planner
+-> Search provider
+-> Result normalizer
+-> Domain and recency filters
+-> Deduplication and reranking
+-> URL selector
+-> Crawler / open_url
+-> Source map
+-> Chunk builder
+-> LLM answer node
+-> Citation formatter
+-> JSON response
+```
+
+In LangFlow, I treated each major boundary as a visible node or small subflow. That made it possible to test the search-only path, crawler-only path, Sonar-style answer path, and agent-tool path independently.
+
+## Flow Inventory
+
+The current system is easiest to maintain as several flows instead of one oversized canvas:
+
+| Flow | Purpose |
+| --- | --- |
+| Search API MVP | Return structured search results without answering |
+| Search With Content | Search and open selected pages |
+| Web Search Tools MVP | Provide `web_search` and `open_url` tool-shaped outputs |
+| Basic Sonar MVP | Search, crawl, and answer with a separate LLM node |
+| Planner Reranker Citations MVP | Main flow with planning, reranking, chunks, and citation checks |
+| Agent Runs MVP | Early agent-style schema and trace foundation |
+| Visual Crawler Pipeline | Debug URL safety, HTTP fetch, HTML cleaning, PDF extraction, and fallback behavior |
+
+<Tip>
+The main testing target is the planner, reranker, and citation flow. The smaller flows exist so individual parts can be debugged without running the whole pipeline.
+</Tip>
+
+## What Was Actually Replicated
+
+| Capability | Current Status | Notes |
+| --- | --- | --- |
+| Real-time search | Working MVP | Uses an external or self-hosted search provider for recall |
+| Search planning | Working MVP | Planner can split or focus queries |
+| Domain filtering | Working MVP | Good enough for official-source tests |
+| Page reading | Working MVP | Crawler/open-url path reads selected pages |
+| Source chunking | Working MVP | Evidence chunks get stable IDs |
+| Citations | Working MVP | Chunk citation detection exists |
+| Reranking | Basic | Rule-based; needs semantic reranking |
+| Agent loop | Early | Tool schema exists, but not a full autonomous loop |
+| Streaming | Not done | Future facade work |
+| OpenAI-compatible API facade | Not done | LangFlow run API works, but `/v1/search` and `/v1/chat/completions` facade is separate work |
+
+<Info>
+The current milestone is "Perplexity-like answer engine: working MVP." It is not yet "Perplexity-grade search engine."
+</Info>
+
+## Test Prompts
+
+Use these tests to check different parts of the pipeline.
+
+### Full Pipeline
+
+```text
+Compare Firecrawl, Exa, and SearXNG for a LangFlow web search agent.
+```
+
+Checks search planning, result collection, page extraction, evidence chunking, and citations.
+
+### Official Source Filtering
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "What are the main differences between LangGraph and LangFlow for building search agents?"
+    }
+  ],
+  "search_domain_filter": [
+    "docs.langchain.com",
+    "docs.langflow.org",
+    "github.com"
+  ],
+  "max_results": 8
+}
+```
+
+Checks whether the flow prefers official docs and admits when evidence is insufficient.
+
+### Citation Discipline
+
+```text
+What does Firecrawl provide for web scraping and LLM-ready content extraction? Answer with citations.
+```
+
+Checks whether chunk IDs such as `[1.1]` or `[2.1]` appear and whether citation warnings stay empty.
+
+### Chinese Answer With English Sources
+
+```text
+帮我比较 Firecrawl、Exa、SearXNG 哪个更适合做一个自托管的 Perplexity-like 搜索问答系统，并给出引用。
+```
+
+Checks Chinese answer quality, English source handling, and citation formatting.
+
+## Common Failure Modes
+
+<Warning>
+If `detected_chunk_citations` is empty, the LLM likely ignored the required citation format. Strengthen the answer prompt or add a second formatter and validator pass.
+</Warning>
+
+<Warning>
+If a domain-filtered request returns too little evidence, do not let the model invent an answer. The right behavior is to say that the selected sources were insufficient.
+</Warning>
+
+<Warning>
+If the crawler returns empty content, do not pass that page into the final LLM context as if it were evidence. Preserve the `failure_reason` and skip or downrank the source.
+</Warning>
+
+<Warning>
+Rule-based reranking can boost docs and GitHub, but it is not enough for high-quality research. Add a semantic reranker before judging the system by Perplexity standards.
+</Warning>
+
+## Final Checklist
+
+- [ ] Search provider returns normalized result objects.
+- [ ] Search planner can generate or refine queries.
+- [ ] Domain filters are applied before crawling.
+- [ ] URL deduplication happens before page reading.
+- [ ] Crawler returns content plus success or failure metadata.
+- [ ] Source chunks receive stable citation IDs.
+- [ ] LLM answer prompt requires citations from known chunks.
+- [ ] Citation formatter reports `detected_chunk_citations`.
+- [ ] Flow can be run from the LangFlow API with `$LANGFLOW_API_KEY`.
+- [ ] Public notes use example domains and variables, not private flow IDs or API keys.
+
+## What To Remember
+
+Perplexity-like search is a pipeline, not a single capability. The useful split is:
+
+```text
+search finds URLs
+crawler reads URLs
+ranker chooses evidence
+LLM writes from evidence
+validator checks citations
+```
+
+That separation is what made the LangFlow implementation debuggable. The next quality improvements should go into semantic reranking, stronger citation validation, provider capability mapping for date and language filters, and a thin API facade that exposes `/v1/search`, `/v1/chat/completions`, and `/v1/agent/runs`.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">perplexity</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">search</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">citations</span>
+    </div>
+    **Related:** [[LangFlow]], [[Web Search]], [[RAG]], [[Citation Validation]]
+  </Card>
+</div>
