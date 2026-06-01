@@ -1,0 +1,168 @@
+---
+title: "用 Cloudflare 托管域名并把服务器 IP 接入 DNS"
+description: "记录如何把域名交给 Cloudflare 管理 DNS，再通过 A、CNAME 等记录把服务器 IP 和多个子域名接入统一操作。"
+date: "2026-06-02"
+type: "guide"
+tags: [cloudflare, dns, domain, vps]
+status: "published"
+---
+
+# 用 Cloudflare 托管域名并把服务器 IP 接入 DNS
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">5 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Cloudflare 最重要的价值是把域名 DNS 操作集中起来，让服务器 IP、子域名、代理和 HTTPS 都可以在一个地方维护。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">cloudflare</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">dns</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">domain</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+  </div>
+</div>
+
+## Summary
+
+这次的核心流程是：先把域名添加到 Cloudflare，再到原域名注册商处把 nameserver 改成 Cloudflare 给出的两条地址，最后在 Cloudflare DNS 页面里添加指向服务器 IP 的记录。完成之后，根域名、`www`、应用子域名、API 子域名都可以在同一个控制台里做解析、代理和 HTTPS 相关配置。
+
+---
+
+## What This Solves
+
+当域名还留在注册商默认 DNS 上时，每次新增服务、改服务器 IP、配置子域名或排查解析问题，都要在不同平台之间切换。把 DNS 托管到 Cloudflare 后，域名仍然归原注册商所有，但解析权交给 Cloudflare 管理。
+
+这样做可以把几类操作集中起来：
+
+- 把根域名或子域名解析到自己的服务器 IP。
+- 给不同服务分配不同子域名，例如 `app.example.com`、`api.example.com`、`panel.example.com`。
+- 通过 Cloudflare 代理隐藏源站 IP，并使用 Cloudflare 的边缘网络和安全能力。
+- 在迁移服务器时，只需要修改 DNS 记录的目标 IP。
+
+## Who This Is For
+
+这篇笔记适合已经买好域名、拥有一台 VPS 或固定服务器 IP，并希望用 Cloudflare 统一管理域名解析的人。读者需要知道自己的域名注册商后台在哪里，也需要能登录 Cloudflare 控制台。
+
+## Prerequisites
+
+- 一个已经购买的域名。
+- 一个 Cloudflare 账号。
+- 一台服务器或 VPS 的公网 IP。
+- 能访问域名注册商后台，并修改 nameserver。
+- 如果要启用 HTTPS，源站服务需要正确监听对应端口，常见是 `80` 和 `443`。
+
+<Info>
+本文不记录真实域名和真实 IP。操作时把示例里的 `example.com` 和 `203.0.113.10` 换成自己的域名和服务器公网 IP。
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="把域名添加到 Cloudflare">
+    登录 Cloudflare 后选择添加站点，输入自己的根域名，例如 `example.com`。Cloudflare 会扫描现有 DNS 记录，但扫描结果只适合作为参考，后面仍然要手动确认关键记录是否正确。
+  </Step>
+  <Step title="切换 nameserver">
+    Cloudflare 会给出两条 nameserver。到域名注册商后台找到 DNS 或 nameserver 设置，把原来的 nameserver 替换为 Cloudflare 给出的两条地址。保存后等待全球 DNS 生效。
+  </Step>
+  <Step title="添加根域名的 A 记录">
+    在 Cloudflare 的 DNS Records 页面添加一条 A 记录，把根域名指向服务器 IP。
+
+```text
+Type: A
+Name: @
+Content: 203.0.113.10
+Proxy status: Proxied 或 DNS only
+TTL: Auto
+```
+
+`@` 表示根域名，也就是 `example.com` 本身。
+  </Step>
+  <Step title="添加 www 或服务子域名">
+    如果希望 `www.example.com` 也能访问同一个服务，可以添加 CNAME 指向根域名，也可以添加 A 记录直接指向同一个 IP。
+
+```text
+Type: CNAME
+Name: www
+Target: example.com
+Proxy status: Proxied 或 DNS only
+TTL: Auto
+```
+
+如果要给不同服务分配入口，就继续添加子域名记录，例如 `app`、`api`、`panel`。
+  </Step>
+  <Step title="决定是否开启 Cloudflare 代理">
+    橙色云朵代表 `Proxied`，访问流量会先经过 Cloudflare；灰色云朵代表 `DNS only`，Cloudflare 只负责解析，不代理流量。Web 服务通常可以先用 `Proxied`，但 SSH、邮件、某些非 HTTP 服务通常不要走 Cloudflare 代理。
+  </Step>
+  <Step title="验证解析是否生效">
+    可以用 `dig` 或 `nslookup` 检查域名解析结果。注意开启 Cloudflare 代理后，查询到的通常是 Cloudflare 边缘 IP，而不是源站真实 IP，这是正常现象。
+
+```bash
+dig example.com
+nslookup app.example.com
+```
+  </Step>
+  <Step title="配合源站服务完成访问">
+    DNS 只负责把域名指到入口，真正能不能打开网站还取决于服务器服务、反向代理、防火墙和端口。常见搭配是 Caddy、Nginx 或 Traefik 在服务器上接收域名请求，再转发到具体应用。
+  </Step>
+</Steps>
+
+<Tip>
+先把 DNS 记录建清楚，再排查服务器服务。域名无法访问时，不要一开始就改应用代码，先确认 nameserver、DNS 记录、代理状态、端口和源站服务是否对应。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+切换 nameserver 后立刻访问失败，不一定是配置错了。DNS 生效需要时间，注册商、递归 DNS 和本地缓存都会影响看到的结果。可以用不同网络或公共 DNS 工具交叉验证。
+</Warning>
+
+<Warning>
+把非 HTTP 服务打开橙色云朵后可能连接失败。Cloudflare 普通代理主要服务 Web 流量，SSH、数据库、邮件等服务应使用 `DNS only`，或者使用 Cloudflare Tunnel、Spectrum 等专门方案。
+</Warning>
+
+<Warning>
+Cloudflare 代理开启后，源站服务器日志里看到的访问 IP 可能变成 Cloudflare IP。如果应用需要真实访客 IP，要在反向代理或应用层读取 `CF-Connecting-IP` 等请求头，并限制只信任 Cloudflare 来源。
+</Warning>
+
+<Warning>
+如果 SSL/TLS 模式和源站证书不匹配，会出现重定向循环、证书错误或 525/526 类问题。更稳的做法是让源站也有可用 HTTPS，然后在 Cloudflare 里使用 Full 或 Full strict 模式。
+</Warning>
+
+## Final Checklist
+
+- [ ] 域名已经添加到 Cloudflare，并显示 nameserver 已接管。
+- [ ] 注册商后台的 nameserver 只保留 Cloudflare 提供的两条地址。
+- [ ] 根域名 `@` 已经有 A 记录指向服务器公网 IP。
+- [ ] 常用子域名已经通过 A 或 CNAME 记录接入。
+- [ ] 每条记录的 `Proxied` / `DNS only` 状态符合服务类型。
+- [ ] 服务器防火墙、反向代理和应用监听端口已经放通并匹配域名。
+- [ ] 使用 `dig`、`nslookup` 或浏览器确认域名可以解析和访问。
+
+## What To Remember
+
+Cloudflare 托管域名 DNS 的本质不是把域名转移走，而是把解析控制面交给 Cloudflare。真正的操作顺序是：注册商改 nameserver，Cloudflare 建 DNS 记录，服务器处理对应域名的请求。以后新增域名入口、迁移 IP、开关代理，都尽量在 Cloudflare DNS 页面中完成，并把服务器反向代理配置当作另一层独立检查。
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">cloudflare</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">dns</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">domain</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+    </div>
+    **Related:** [[deploy-x-ui-with-caddy-https-on-a-vps]], [[dns]], [[cloudflare]]
+  </Card>
+</div>

@@ -28,7 +28,8 @@
               {
                 "group": "June",
                 "pages": [
-                  "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps"
+                  "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps",
+                  "docs/notes/2026/06/2026-06-02-cloudflare-ip-dns"
                 ]
               }
             ]
