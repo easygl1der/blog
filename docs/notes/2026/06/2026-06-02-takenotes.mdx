@@ -1,0 +1,255 @@
+---
+title: "从零搭建 Takenotes 知识发布流程"
+description: "A beginner can turn raw notes into published Mintlify posts by generating MDX, updating navigation, validating, committing, pushing, and deploying with Vercel."
+date: "2026-06-02"
+type: "guide"
+tags: [takenotes, mintlify, vercel, workflow]
+status: "published"
+---
+
+# 从零搭建 Takenotes 知识发布流程
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">7 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Takenotes 的本质是一条知识发布流水线：把一段原始想法变成结构化 MDX，再通过 Mintlify、GitHub 和 Vercel 发布成可访问网页。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">takenotes</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mintlify</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vercel</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+  </div>
+</div>
+
+## Summary
+
+完整的 takenotes 流程可以理解成六步：说出原始素材，生成一篇合格的 Mintlify MDX，用发布脚本写入笔记目录并更新 `docs.json`，运行严格校验，提交并推送 Git，最后用 Vercel 生成预览部署。零基础的人只要先把博客仓库、Mintlify 配置、GitHub 远程仓库和 Vercel 登录准备好，就可以照着这条流水线重复发布自己的知识笔记。
+
+---
+
+## What This Solves
+
+很多有价值的内容最开始都只是口头想法、聊天记录、部署过程、排错步骤或一段很乱的笔记。如果直接保存成普通文本，之后很难搜索、复用、发布，也很难保证格式正确。
+
+Takenotes 解决的是这个问题：把原始材料转换成可发布、可导航、可校验、可部署的知识网页。它不是只写一篇文章，而是把文章放进一个完整发布系统里。
+
+这条流水线做了几件事：
+
+- 把一句话或一段聊天整理成教程、复盘、修复记录或研究笔记。
+- 生成 Mintlify 可识别的 `.mdx` 文件。
+- 自动放到按日期组织的目录里。
+- 更新 `docs.json` 导航，让网页里能找到新文章。
+- 运行 Mintlify 校验，提前发现格式、链接、可访问性问题。
+- 用 Git 提交和推送，保留版本历史。
+- 用 Vercel 部署，得到一个可以打开的 Preview URL。
+
+## Who This Is For
+
+这篇教程面向完全没跑过 takenotes 的人。你不需要先懂 MDX、Mintlify 或 Vercel 的所有细节，但需要能打开终端、知道项目文件夹在哪里，并愿意按步骤检查命令输出。
+
+如果你已经会写 Markdown，这套流程会让你多理解三件事：文章如何进入站点导航、如何在提交前验证站点不会坏、如何把本地内容发布到公网。
+
+## Prerequisites
+
+- 一个本地博客仓库，例如 `/Users/yitwah/projects/blog`。
+- 仓库里有 Mintlify 配置文件，通常是 `docs.json`。
+- 仓库已经连接 GitHub 远程仓库。
+- 本地能运行 Node.js 和 `npx`。
+- Vercel 账号已经登录，或可以通过 CLI 登录。
+- 一个 takenotes 技能或等价脚本，用来生成 MDX、写文件、更新导航和运行校验。
+
+<Info>
+在这个环境里，takenotes 的默认博客仓库是 `/Users/yitwah/projects/blog`，笔记默认写到类似 `docs/notes/2026/06/2026-06-02-example-slug.mdx` 的日期目录里，导航配置是 `/Users/yitwah/projects/blog/docs.json`。
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="准备一段原始素材">
+    你可以输入一句很短的话，例如“我是如何通过 Vercel 部署网页的”，也可以粘贴一大段聊天记录、报错日志、命令输出或部署步骤。takenotes 会先判断这段素材适合变成哪种文章。
+
+常见类型包括：
+
+- `guide`：适合教程和完整流程。
+- `error-fix`：适合错误症状、原因和修复。
+- `devlog`：适合记录一次工程推进。
+- `research`：适合整理调研结论。
+
+如果目标是“让别人照着做”，通常选 `guide`。
+  </Step>
+  <Step title="把素材改写成结构化 MDX">
+    一篇合格的 Mintlify MDX 需要 frontmatter、正文标题、摘要卡片、正文段落和元数据区域。frontmatter 是文件最开头的元信息，决定标题、描述、日期、类型、标签和发布状态。
+
+```mdx
+---
+title: "通过 Vercel 部署网页"
+description: "A beginner can deploy a website with Vercel by configuring the repo, build command, output directory, and environment variables."
+date: "2026-06-02"
+type: "guide"
+tags: [vercel, deployment, frontend]
+status: "published"
+---
+
+# 通过 Vercel 部署网页
+```
+
+对 `guide` 类型，正文至少应该包含这些部分：`What This Solves`、`Who This Is For`、`Prerequisites`、`The Workflow`、`Common Failure Modes`、`Final Checklist` 和 `What To Remember`。
+  </Step>
+  <Step title="先写到临时 MDX 文件">
+    实际发布前，可以先把生成的 MDX 放在临时文件里。这样即使校验失败，也不会污染正式笔记目录。
+
+```bash
+/tmp/takenotes-full-workflow-note.mdx
+```
+
+临时稿通过检查后，再交给发布脚本写入正式目录。
+  </Step>
+  <Step title="用发布脚本写入笔记目录">
+    发布脚本会读取临时 MDX，检查 frontmatter 和正文结构，然后生成正式文件路径，并更新 Mintlify 导航。
+
+```bash
+python /Users/yitwah/.codex/skills/takenotes/scripts/publish_note.py \
+  --vault /Users/yitwah/projects/blog \
+  --date 2026-06-02 \
+  --title "从零搭建 Takenotes 知识发布流程" \
+  --type guide \
+  --mdx /tmp/takenotes-full-workflow-note.mdx
+```
+
+成功后通常会得到一个类似这样的正式路径：
+
+```text
+/Users/yitwah/projects/blog/docs/notes/2026/06/2026-06-02-takenotes.mdx
+```
+  </Step>
+  <Step title="检查 docs.json 导航">
+    Mintlify 不是只看文件是否存在，还要看导航里有没有引用这个页面。`publish_note.py` 会把新页面加入 `docs.json` 的 `Notes -> 2026 -> June` 分组。
+
+你应该确认新增的是本次这篇笔记，不要把无关草稿或未跟踪文件一起加入导航。
+
+```bash
+git diff -- docs.json
+```
+  </Step>
+  <Step title="运行严格 Mintlify 校验">
+    写入正式文件后，必须跑 Mintlify 校验。这个检查会验证构建、断链、锚点、可访问性和本地预览。
+
+```bash
+python /Users/yitwah/.codex/skills/takenotes/scripts/strict_mintlify_check.py \
+  --config-dir /Users/yitwah/projects/blog
+```
+
+通过后，说明这篇笔记至少不会让 Mintlify 站点明显损坏。
+  </Step>
+  <Step title="检查 Git diff 和工作区">
+    提交前要确认两件事：没有空白字符错误，以及暂存范围只包含本次任务需要的文件。
+
+```bash
+git diff --check
+git status --short
+git diff -- docs.json docs/notes/2026/06/2026-06-02-takenotes.mdx
+```
+
+如果工作区里有别人的修改或其他任务留下的文件，不要顺手提交。只提交本次笔记和必要的导航变更。
+  </Step>
+  <Step title="提交并推送到 GitHub">
+    确认无误后，暂存本次文件并提交。
+
+```bash
+git add docs.json docs/notes/2026/06/2026-06-02-takenotes.mdx
+git commit -m 'notes: add guide "从零搭建 Takenotes 知识发布流程" (2026-06-02)'
+git push
+```
+
+提交信息要能说明文章类型、标题和日期，方便以后从 Git 历史里查找。
+  </Step>
+  <Step title="用 Vercel 部署 Preview">
+    推送后，用 Vercel CLI 检查登录账号，再部署 preview。
+
+```bash
+npx --yes vercel whoami
+npx --yes vercel deploy /Users/yitwah/projects/blog -y
+```
+
+部署完成后，Vercel 会输出 Preview URL 和 READY 状态。Preview 用来检查页面是否能打开、导航是否出现新文章、内容是否排版正常。
+  </Step>
+  <Step title="需要正式上线时再发 Production">
+    Preview 没问题后，才考虑生产发布。生产部署要显式加 `--prod`。
+
+```bash
+npx --yes vercel deploy /Users/yitwah/projects/blog --prod -y
+```
+
+如果只是记录和测试，preview 已经足够；如果要让正式域名访问最新内容，再发布 production。
+  </Step>
+</Steps>
+
+<Tip>
+Takenotes 最重要的习惯是每次只提交本次笔记和对应导航。写文章、校验、提交、部署都可以自动化，但提交范围必须人工确认。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+中文 description 可能被简单校验器误判为“词数不足”。如果发布脚本按空格分词，可以在 description 中使用一条清晰英文句子，或者写成带空格的中英混合描述。
+</Warning>
+
+<Warning>
+MDX 代码块必须带语言标签。不要写空的三反引号，应该写成 `bash`、`text`、`mdx`、`json` 等明确类型。
+</Warning>
+
+<Warning>
+发布脚本更新导航时，可能把同日期目录里的其他未跟踪笔记也加入 `docs.json`。提交前一定要看 `git diff -- docs.json`，只保留本次要发布的页面引用。
+</Warning>
+
+<Warning>
+不要在未确认的情况下用 `git reset`、`git restore`、`git clean` 或删除文件来修正状态。修正 Git 状态可能影响用户已有改动，必须先确认要改什么。
+</Warning>
+
+<Warning>
+Vercel 构建时出现 npm audit 警告不一定代表部署失败。真正要看的是构建命令是否完成、输出是否部署成功，以及最终 readyState 是否为 READY。
+</Warning>
+
+## Final Checklist
+
+- [ ] 原始素材已经明确要写成哪种文章，通常是 `guide`。
+- [ ] MDX frontmatter 包含 `title`、`description`、`date`、`type`、`tags` 和 `status`。
+- [ ] 正文有 H1 标题，并包含 guide 必需章节。
+- [ ] 所有代码块都有语言标签。
+- [ ] `publish_note.py` 成功写入正式笔记路径。
+- [ ] `docs.json` 只新增本次页面引用。
+- [ ] `strict_mintlify_check.py` 通过。
+- [ ] `git diff --check` 通过。
+- [ ] commit 只包含本次笔记和导航变更。
+- [ ] `git push` 成功。
+- [ ] Vercel preview 部署完成并显示 READY。
+
+## What To Remember
+
+Takenotes 不是简单把聊天内容复制成 Markdown，而是一个可重复的发布系统。输入是原始想法，输出是一篇通过校验、进入导航、写入 Git 历史、部署到 Vercel 的网页。只要每次都按“生成 MDX -> 发布脚本 -> 校验 -> 检查 diff -> 提交推送 -> preview 部署”的顺序走，零基础也能稳定发布自己的知识库。
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">takenotes</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mintlify</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vercel</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+    </div>
+    **Related:** [[vercel]], [[cloudflare-ip-dns]], [[how-to-use-and-recreate-mintlify]]
+  </Card>
+</div>
