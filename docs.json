@@ -64,6 +64,12 @@
                     ]
                   },
                   {
+                    "group": "Creative Technical Workflows",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-03-math-physics-animation-workflow"
+                    ]
+                  },
+                  {
                     "group": "Codex As Workflow Engine",
                     "pages": [
                       "docs/notes/2026/06/2026-06-02-codex-goal",

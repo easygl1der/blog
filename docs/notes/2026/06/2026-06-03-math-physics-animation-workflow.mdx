@@ -1,0 +1,210 @@
+---
+title: "数学物理动画制作流程"
+description: "A practical workflow for turning math and physics ideas into scripted animations with formulas, scenes, renders, and review loops."
+date: "2026-06-03"
+type: "guide"
+tags: [math-animation, physics, manim, visualization, workflow]
+status: "published"
+---
+
+# 数学物理动画制作流程
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-03</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">8 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    数学物理动画最稳的流程是先把概念拆成可验证的公式和镜头，再用代码生成场景、渲染短片段、反复截图检查。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">math-animation</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">physics</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">manim</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">visualization</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+  </div>
+</div>
+
+## Summary
+
+这个流程用于把一个数学或物理想法变成可发布的动画：先写清楚概念、公式和目标观众，再拆成镜头脚本，最后用 Manim、Blender、Three.js 或类似工具生成可复现的画面。不要一开始就追求完整成片，先做静态帧和短片段，确认公式、构图、节奏都正确，再进入完整渲染。
+
+数学物理动画的难点不是“让东西动起来”，而是保持三件事同时正确：数学表达正确，物理直觉清楚，画面信息不过载。每一轮迭代都应该有截图、短视频或渲染日志作为检查依据。
+
+---
+
+## What This Solves
+
+数学物理动画很容易卡在两个极端：要么只写公式，画面缺少直觉；要么只做视觉效果，公式和物理含义变得不可靠。一个稳定流程要把“推导”和“画面”绑定起来，让每个镜头都有明确的教学目的。
+
+例如讲简谐振子时，不应该只显示一个弹簧来回运动。更好的镜头结构是同时解释：
+
+\[
+x(t)=A\cos(\omega t+\phi)
+\]
+
+以及它和相空间、能量守恒之间的关系：
+
+\[
+E=\frac{1}{2}mv^2+\frac{1}{2}kx^2.
+\]
+
+动画的作用是让观众看到 \(x(t)\)、\(v(t)\)、能量交换和几何轨迹之间的同一个结构，而不是把公式当字幕贴在画面上。
+
+## Who This Is For
+
+这篇笔记适合未来要用 Codex、Claude Code、Manim、Blender、Three.js、Python 或前端 canvas 做数学物理解释视频的人。默认读者已经知道要讲的主题，但需要一个可重复执行的制作流程。
+
+它也适合用 AI agent 协作：让 agent 帮你写分镜、生成 Manim 场景、修正公式、跑渲染、检查截图、导出视频和整理发布说明。
+
+## Prerequisites
+
+- 一个明确的数学或物理主题，例如微分方程、波动、场论、概率、线性代数、力学或几何。
+- 一个渲染工具链。常见选择是 Manim 做 2D 数学动画，Blender 做 3D/物理质感，Three.js 做网页交互动画。
+- 可运行的 Python 或 JavaScript 环境。
+- 如果公式很多，优先把推导写进 `.tex` 文件并编译成 PDF，用作动画脚本的数学真源。
+- 一个短反馈循环：静态截图、低分辨率预览、局部片段渲染，而不是每次都全片高质量渲染。
+
+<Info>
+如果动画里包含大量数学推导，先维护一份 `.tex` 讲义或脚本。动画代码应该服务于这份数学结构，而不是反过来在代码里临时拼公式。
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="把主题压成一句教学目标">
+    先写一句话说明观众看完后应该理解什么。不要从工具开始。
+
+```text
+目标：让观众理解傅里叶级数不是魔法展开，而是把周期函数投影到正交基上。
+```
+
+这个目标会决定镜头是不是有必要。不能服务目标的镜头先删掉。
+  </Step>
+  <Step title="写数学真源">
+    对公式密集的主题，先写 `.tex`。公式用清楚的变量命名和顺序，例如：
+
+```tex
+\[
+f(x)\sim \sum_{n=-\infty}^{\infty} c_n e^{inx},\qquad
+c_n=\frac{1}{2\pi}\int_{-\pi}^{\pi}f(x)e^{-inx}\,dx.
+\]
+```
+
+动画阶段只引用这些公式，不临时改数学。
+  </Step>
+  <Step title="拆成镜头脚本">
+    每个镜头只承担一个认知动作：引入对象、展示变换、比较两个量、揭示守恒、总结关系。推荐用这样的表格管理：
+
+```text
+Scene 01: 问题引入，展示原始函数或物理系统。
+Scene 02: 加入坐标轴和变量定义。
+Scene 03: 展示公式中的每一项如何对应画面元素。
+Scene 04: 动起来，观察关键量如何变化。
+Scene 05: 回到公式，总结观众应该记住的结构。
+```
+  </Step>
+  <Step title="先做静态关键帧">
+    不要直接写完整动画。先渲染每个关键时刻的静态帧：开场、变量出现、公式出现、运动中点、结论帧。静态帧能快速暴露文字太小、坐标遮挡、公式太长、颜色语义不清等问题。
+  </Step>
+  <Step title="实现最小动画片段">
+    用 Manim 或其他工具先实现一个 5 到 15 秒片段。比如只做一个变量从 \(t=0\) 到 \(t=T\) 的变化，不做旁白、不做完整剪辑。
+
+```bash
+manim -pql scene.py HarmonicOscillatorScene
+```
+
+低质量预览通过后，再提升渲染质量。
+  </Step>
+  <Step title="把物理量映射到视觉通道">
+    视觉通道要稳定。位置表示位移，颜色表示能量类型，轨迹表示历史，透明度表示旧状态，粗细表示强度。不要在同一段里让同一种颜色代表多个物理量。
+  </Step>
+  <Step title="截图审查而不是凭感觉">
+    每次改动后保存截图或短视频。检查四件事：公式是否正确、画面元素是否遮挡、观众是否知道看哪里、动画是否真的解释了概念。
+  </Step>
+  <Step title="最后才做完整导出">
+    当关键帧和短片段都稳定后，再跑完整渲染、压缩、字幕和发布封面。完整导出是生产步骤，不应该承担探索任务。
+  </Step>
+</Steps>
+
+<Tip>
+用 AI agent 协作时，最有效的请求不是“帮我做一个物理动画”，而是“根据这段 `.tex` 推导生成 5 个 Manim scene，每个 scene 有教学目标、关键公式和截图验收标准”。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+公式和动画脱节。画面在动，但观众不知道它对应公式里的哪一项。解决办法是建立稳定映射：变量出现时高亮公式中的同名符号，运动发生时同步更新数值或图形。
+</Warning>
+
+<Warning>
+一次塞太多信息。坐标轴、公式、箭头、文字解释、轨迹和旁白同时出现，观众无法跟上。每个镜头只引入一个新概念，旧概念用淡化或固定位置保留。
+</Warning>
+
+<Warning>
+直接高质量全片渲染。这样会把反馈循环拉长，任何小错误都要等很久。先用低质量预览和静态帧确认结构，再高质量导出。
+</Warning>
+
+<Warning>
+把 AI 生成的公式直接用于视频。数学物理内容必须经过人工或符号检查。尤其是符号、单位、边界条件、初始条件和正负号，不能只凭语言模型输出。
+</Warning>
+
+<Warning>
+工具选择过早复杂化。2D 数学解释优先 Manim；需要真实材质、镜头和三维空间时再用 Blender；需要网页交互时用 Three.js。不要为了简单的函数图像一开始就进入重型 3D 管线。
+</Warning>
+
+## Final Checklist
+
+- [ ] 主题已经压成一句教学目标。
+- [ ] 公式真源已经写清楚，必要时放进 `.tex` 并编译检查。
+- [ ] 分镜表明确每个 scene 的认知目的。
+- [ ] 关键帧截图已经通过可读性检查。
+- [ ] 低质量短片段已经验证运动和公式同步。
+- [ ] 颜色、位置、轨迹、透明度等视觉语义保持一致。
+- [ ] 最终视频有渲染命令、输出路径和版本记录。
+
+## What To Remember
+
+数学物理动画不是“把公式变漂亮”，而是把抽象结构变成可检查的视觉推理。先保证数学真源，再拆分镜头，再做关键帧，最后渲染完整视频。每一步都要能回到公式和教学目标，否则画面越复杂，解释越不可靠。
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-03</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">math-animation</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">physics</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">manim</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">visualization</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">codex skills</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">latex workflow</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">visual explanation</span>
+      </div>
+    </div>
+  </Card>
+</div>
