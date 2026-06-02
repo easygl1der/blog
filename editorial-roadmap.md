@@ -143,14 +143,15 @@ Keep as pillars:
 - `2026-06-02-vercel`
 - `2026-06-02-cloudflare-ip-dns`
 
-Candidates for merge or refresh:
+Archived raw material hidden from public navigation:
 
 - `2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow`
 - `2026-05-31-using-the-perplexity-like-langflow-search-flows`
 - `2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis`
 - `2026-05-31-operate-langflow-flows-through-api-and-mcp`
+- `2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows`
 
-These May notes contain useful raw material, but the June notes should become the cleaner public-facing versions. Avoid adding more Perplexity or LangFlow API notes until the overlap is resolved.
+These May notes are kept in the repository as source material, but they should not be visible in public navigation. The June notes are the cleaner public-facing versions. Avoid adding more Perplexity or LangFlow API notes unless they introduce a genuinely new system boundary.
 
 LangFlow API/MCP overlap status:
 
@@ -161,6 +162,7 @@ Perplexity/Search overlap status:
 
 - `2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow` has been folded into `2026-06-02-recreate-perplexity-search-with-langflow` as the architecture, API surfaces, crawler, filter, and citation sections.
 - `2026-05-31-using-the-perplexity-like-langflow-search-flows` has been folded into `2026-06-02-recreate-perplexity-search-with-langflow` as the replication scorecard and expanded evaluation prompts.
+- `2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows` is treated as an archived decision note; the current public roadmap keeps streaming as future facade work inside `2026-06-02-recreate-perplexity-search-with-langflow`.
 
 ## Next Writing Order
 
