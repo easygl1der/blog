@@ -1,0 +1,260 @@
+---
+title: "Deep Research Is an Orchestration Loop"
+description: "Deep Research differs from a normal LLM call because it plans, searches, opens sources, tracks citations, and synthesizes a report across multiple controlled steps."
+date: "2026-06-02"
+type: "guide"
+tags: [deep-research, langflow, agents, llm]
+status: "published"
+---
+
+# Deep Research Is an Orchestration Loop
+
+<div className="text-sm text-gray-500 mb-6">
+  2026-06-02 · guide · 6 min read
+</div>
+
+## Summary
+
+Deep Research is not just a larger prompt sent to a stronger model. It is a workflow that turns one user question into a planned research process: clarify the goal, create a plan, run searches, open sources, produce intermediate findings, preserve citations, and then synthesize a final report.
+
+---
+
+## What This Solves
+
+A normal LLM call is usually shaped like this:
+
+```text
+user question -> model -> answer
+```
+
+That works for short reasoning, rewriting, summarization, and questions where the model already has enough context. It breaks down when the answer needs fresh facts, multiple sources, citations, or careful comparison across many pieces of evidence.
+
+Deep Research changes the shape of the problem:
+
+```text
+user question
+-> clarification
+-> research plan
+-> orchestrator loop
+-> search and source opening
+-> intermediate findings with citations
+-> final report
+```
+
+The important difference is that Deep Research treats the LLM as one part of a system, not the entire system.
+
+## Who This Is For
+
+This is for anyone building a Perplexity-like or Onyx-like research mode in Langflow. It is especially useful if you already have web search flows, retrievers, vector stores, or Perplexity-style search backends, and now want to add a higher-level research loop around them.
+
+## Prerequisites
+
+You need three capabilities:
+
+- an LLM that can produce structured JSON for planning and reporting
+- one or more search tools that return source snippets and URLs
+- a way to preserve state across steps, especially findings and citations
+
+In Langflow terms, this means the Deep Research node should not be a plain chat model node. It should be a workflow or component that can call other tools and emit progress events.
+
+## The Workflow
+
+### 1. Clarify the request
+
+The first step decides whether the user question is specific enough.
+
+For example, this may need clarification:
+
+```text
+Compare the best AI tools.
+```
+
+The system should ask what domain, budget, user type, or time horizon matters. But this does not need clarification:
+
+```text
+Compare Onyx and Perplexity-style Deep Research architectures for implementing a Langflow MVP.
+```
+
+<Tip>
+Clarification should be optional. If the user wants speed, allow `skip_clarification=true` and go straight to planning.
+</Tip>
+
+### 2. Generate a research plan
+
+The planning step turns the original question into concrete research tasks. A plan should include:
+
+- the objective
+- independent research questions
+- search queries
+- whether each task needs web search
+- whether each task needs internal search or RAG
+- success criteria for the final report
+
+Example plan shape:
+
+```json
+{
+  "objective": "Explain how to implement Deep Research in Langflow",
+  "steps": [
+    {
+      "question": "How does the open implementation structure planning?",
+      "search_queries": ["Onyx Deep Research planning agent"],
+      "needs_web_search": true,
+      "needs_internal_search": false
+    },
+    {
+      "question": "Which existing Langflow search flows can be reused?",
+      "search_queries": ["local Perplexity Langflow facade search backend"],
+      "needs_web_search": false,
+      "needs_internal_search": true
+    }
+  ],
+  "success_criteria": [
+    "Explain architecture",
+    "Preserve citations",
+    "Identify integration points"
+  ]
+}
+```
+
+### 3. Run an orchestrator loop
+
+The orchestrator is the top-level controller. It should not do all the research itself. It decides:
+
+- which task to run next
+- whether enough tasks have been completed
+- whether the loop hit `max_cycles`
+- when to stop and generate the final report
+
+This is the main reason Deep Research is different from a normal LLM call. There is a stateful loop.
+
+```text
+while not done and cycles < max_cycles:
+    task = orchestrator.next_task(plan, findings)
+    finding = research_subagent.run(task)
+    findings.append(finding)
+
+final_report = reporter.run(plan, findings)
+```
+
+<Info>
+The architecture should stay shallow. A practical MVP can use one orchestrator and one research subagent layer. Avoid recursive multi-agent nesting until there is a real reason.
+</Info>
+
+### 4. Use search and open-source tools
+
+The research subagent should call tools instead of relying on model memory. In a Langflow implementation, the tool layer can include:
+
+- Perplexity-style web search backend
+- normal web search
+- URL opening and page extraction
+- vector store retriever
+- RAG flow
+- internal document search
+
+The key contract is simple:
+
+```python
+class SearchTool:
+    async def search(self, query: str, *, max_results: int = 5) -> list[Citation]:
+        ...
+```
+
+Each result should become a citation-like object:
+
+```json
+{
+  "title": "Source title",
+  "url": "https://example.com/source",
+  "source": "web",
+  "snippet": "Relevant source excerpt"
+}
+```
+
+### 5. Produce intermediate findings
+
+Each research task should produce an intermediate report before the final answer. This keeps the system inspectable.
+
+An intermediate finding should include:
+
+- the task question
+- a short summary
+- evidence bullets
+- citations used by that task
+
+This is where the system avoids losing traceability. The final report should not invent citations at the end; it should inherit and deduplicate citations from intermediate findings.
+
+### 6. Generate the final report
+
+The final report agent receives the original question, the plan, all intermediate findings, and the citation set. Its job is synthesis, not new search.
+
+A good final report includes:
+
+- title
+- executive summary
+- structured sections
+- limitations
+- citations
+
+<Warning>
+Do not let the final report model browse or invent sources independently. That weakens citation integrity. The final report should be grounded in the findings already collected.
+</Warning>
+
+## Common Failure Modes
+
+### Treating Deep Research as one big prompt
+
+If the whole implementation is:
+
+```text
+"Do deep research on this topic and cite sources"
+```
+
+then it is still just a normal LLM call. It may look detailed, but it has no reliable search loop, no state, no intermediate findings, and weak citation control.
+
+### Too many agents too early
+
+Deep Research does not require five nested agents. A strong MVP can use:
+
+- clarification agent
+- planning agent
+- orchestrator
+- research subagent
+- final report agent
+
+The orchestrator and research subagent are the core two-layer structure.
+
+### Losing citations between steps
+
+If citations are only added during final writing, the model may attach sources loosely. Citations should be collected during search and carried through intermediate findings into the final report.
+
+### Ignoring existing search infrastructure
+
+If a Langflow project already has Perplexity-like search flows, the Deep Research implementation should reuse them. The orchestrator should sit above existing search tools rather than replace them with a weaker default search backend.
+
+## Final Checklist
+
+- The system can ask for clarification when needed.
+- The planning step returns structured research tasks.
+- The orchestrator respects `max_cycles`.
+- The research subagent calls web search, URL opening, and internal search tools.
+- Each task produces intermediate findings with citations.
+- The final report is synthesized from collected findings.
+- Streaming progress events expose planning, task start, task completion, findings, and final report.
+- The Langflow component can connect to an internal retriever or vector store.
+
+## What To Remember
+
+Deep Research is a control loop around LLMs and tools. The LLM writes plans, summaries, and reports, but the system controls when to search, what to open, what evidence to keep, and when to stop.
+
+For Langflow, the right mental model is not "a better chat node." It is a research workflow component that orchestrates existing search and RAG capabilities.
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** deep-research · langflow · agents · llm  
+  **Related:** [[Build a Perplexity-Like Web Search Flow in Langflow]], [[Using the Perplexity-Like Langflow Search Flows]], [[Recreate Perplexity Search with Langflow]]
+</Card>
