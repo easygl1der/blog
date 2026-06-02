@@ -162,7 +162,7 @@ Visible archive material:
 - `2026-05-31-operate-langflow-flows-through-api-and-mcp`
 - `2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows`
 
-These May notes are visible under `May Archive` so older work can still be found and referenced. Treat them as raw historical material, not the canonical public-facing versions. The June notes remain the cleaner theme-organized articles. Avoid adding more Perplexity or LangFlow API notes unless they introduce a genuinely new system boundary.
+These May notes are visible under `May` so older work can still be found and referenced. Treat them as raw historical material, not the canonical public-facing versions. The June notes remain the cleaner theme-organized articles. Avoid adding more Perplexity or LangFlow API notes unless they introduce a genuinely new system boundary.
 
 LangFlow API/MCP overlap status:
 
