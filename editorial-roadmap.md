@@ -130,6 +130,7 @@ Keep as pillars:
 
 - `2026-06-02-generate-a-whole-book-with-langflow`
 - `2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp`
+- `2026-06-02-operate-langflow-flows-through-api-and-mcp`
 - `2026-06-02-langflow-debugging-playbook`
 - `2026-06-02-recreate-perplexity-search-with-langflow`
 - `2026-06-02-deep-research-is-an-orchestration-loop`
@@ -151,33 +152,35 @@ Candidates for merge or refresh:
 
 These May notes contain useful raw material, but the June notes should become the cleaner public-facing versions. Avoid adding more Perplexity or LangFlow API notes until the overlap is resolved.
 
+LangFlow API/MCP overlap status:
+
+- `2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis` has been folded into `2026-06-02-operate-langflow-flows-through-api-and-mcp` as the local long-flow operations section.
+- `2026-05-31-operate-langflow-flows-through-api-and-mcp` has been folded into `2026-06-02-operate-langflow-flows-through-api-and-mcp` as the canonical REST/MCP operations guide.
+
 ## Next Writing Order
 
-1. Refresh `Operate LangFlow Flows Through API And MCP` as the canonical API/MCP operations pillar.
-2. Audit the May LangFlow API notes and fold unique material into the refreshed API/MCP pillar.
-3. Audit the May Perplexity notes and fold remaining unique material into `Recreate Perplexity Search With LangFlow`.
-4. Decide whether `Perplexity Computer` is a case study section under the research-agent pillar or a standalone interaction article.
-5. Create new notes only after the existing overlap has been resolved.
+1. Audit the May Perplexity notes and fold remaining unique material into `Recreate Perplexity Search With LangFlow`.
+2. Decide whether `Perplexity Computer` is a case study section under the research-agent pillar or a standalone interaction article.
+3. Create new notes only after the existing overlap has been resolved.
 
 ## Immediate Quality Pass
 
-Current target: `Operate LangFlow Flows Through API And MCP`.
+Current target: Perplexity/Search overlap audit.
 
 Why this is next:
 
-- `Generate a Whole Book With LangFlow` already has the required architecture overview, deterministic/LLM separation, Custom Component boundary, sidecar boundary, failure modes, and evaluation checklist.
-- The remaining LangFlow weakness is overlap between May API notes, VPS deployment notes, MCP flow creation notes, and debugging notes.
-- A clean API/MCP operations pillar will let the book-generation and debugging notes link instead of repeating long command sequences.
+- `Operate LangFlow Flows Through API And MCP` now exists as the canonical API/MCP operations pillar.
+- The remaining duplication is mostly in the Perplexity/Search/RAG cluster.
+- The next pass should fold May Perplexity material into the June Perplexity pillar instead of creating another search article.
 
 Quality pass requirements:
 
-1. Define one core question: "How do I operate LangFlow flows through REST APIs and MCP without relying on browser-only actions?"
-2. Merge useful material from `2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis` and `2026-05-31-operate-langflow-flows-through-api-and-mcp`.
-3. Keep deployment details in `Deploy LangFlow On A VPS And Build Flows Through MCP`.
-4. Keep red-box, build stream, and `database is locked` troubleshooting in `LangFlow Debugging Playbook`.
-5. Include privacy-safe commands for listing flows, fetching a flow, running a flow, uploading files, using project MCP endpoints, and validating output.
-6. Add explicit boundaries for when to use API, MCP, browser UI, and Codex tools.
-7. Remove real domains, local paths, flow IDs, project IDs, and API keys before publishing changes.
+1. Compare `2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow` with `2026-06-02-recreate-perplexity-search-with-langflow`.
+2. Compare `2026-05-31-using-the-perplexity-like-langflow-search-flows` with `2026-06-02-recreate-perplexity-search-with-langflow`.
+3. Move only unique operational lessons into the June Perplexity pillar.
+4. Keep crawler responsibility details in `Crawler Reads URLs, Search Finds URLs`.
+5. Keep source-map and citation-validator details in `Source Maps, Chunk Citations, And Citation Validation`.
+6. Remove real domains, local paths, flow IDs, project IDs, API keys, and provider keys before publishing changes.
 
 ## Decision Rule For Future Notes
 

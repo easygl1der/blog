@@ -1,0 +1,474 @@
+---
+title: "Operate LangFlow Flows Through API And MCP"
+description: "A practical guide to operating LangFlow flows through REST APIs and MCP endpoints without relying on browser-only actions or exposing private identifiers."
+date: "2026-06-02"
+type: "guide"
+tags: [langflow, api, mcp, automation, codex]
+status: "published"
+---
+
+# Operate LangFlow Flows Through API And MCP
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">13 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Treat LangFlow's browser UI as the visual editor, REST APIs as the reproducible control plane, and MCP as the tool bridge that lets an agent operate selected project flows.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">api</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+  </div>
+</div>
+
+## Summary
+
+LangFlow does not need to stay a browser-only canvas. Once the server is reachable and an API key exists, flows can be listed, fetched, edited, run, uploaded to, built up to a component, and exposed as MCP tools through reproducible command-line calls.
+
+This note is the operations layer for the LangFlow series. [Deploy LangFlow On A VPS And Build Flows Through MCP](/docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp) covers hosting and HTTPS. [LangFlow Debugging Playbook](/docs/notes/2026/06/2026-06-02-langflow-debugging-playbook) covers red boxes, stale browser sessions, build event streams, and `database is locked`. This note focuses on the day-to-day control surface: REST, JSON, files, runs, builds, and MCP.
+
+---
+
+## What This Solves
+
+The core question is:
+
+```text
+How do I operate LangFlow flows through REST APIs and MCP without relying on browser-only actions?
+```
+
+The operating model is:
+
+```text
+Human, Codex, or another agent
+-> shell command, script, or MCP client
+-> LangFlow REST API
+-> flow JSON, files, run jobs, build jobs, project MCP tools
+```
+
+This matters when a flow becomes part of a real workflow. Browser clicks are hard to reproduce. API calls can be logged, reviewed, repeated, scripted, and safely documented with variables instead of private values.
+
+<Warning>
+Never publish a real LangFlow domain, API key, project ID, flow ID, uploaded file path, customer document name, or local user path. Public examples should use values like `https://langflow.example.com`, `$LANGFLOW_API_KEY`, `$FLOW_ID`, and `$PROJECT_ID`.
+</Warning>
+
+## Who This Is For
+
+This is for someone who already has a LangFlow server and wants Codex, a shell script, or an MCP client to operate flows reliably.
+
+It assumes you can:
+
+- run `curl`;
+- inspect JSON with `jq`;
+- create a LangFlow API key;
+- identify a target flow and project;
+- keep secrets in environment variables or a secret store.
+
+It does not explain how to install LangFlow on a VPS. Use the deployment note for that layer.
+
+## Prerequisites
+
+Set the shared environment first:
+
+```bash
+export LANGFLOW_BASE_URL="https://langflow.example.com"
+export LANGFLOW_API_KEY="set-this-in-your-shell-or-secret-store"
+export FLOW_ID="example-flow-id"
+export PROJECT_ID="example-project-id"
+```
+
+For local development, the base URL can be:
+
+```bash
+export LANGFLOW_BASE_URL="http://localhost:7860"
+```
+
+Check health before doing anything else:
+
+```bash
+curl -fsS "$LANGFLOW_BASE_URL/health_check"
+```
+
+A healthy server commonly returns:
+
+```json
+{"status":"ok","chat":"ok","db":"ok"}
+```
+
+<Info>
+Use one stable local port for a long-running local LangFlow instance, commonly `localhost:7860`. Multiple local servers pointed at the same SQLite database are a debugging problem, not an API feature.
+</Info>
+
+## API, MCP, UI, And Codex Boundaries
+
+Use each surface for the job it is best at:
+
+| Surface | Use It For | Avoid Using It For |
+| --- | --- | --- |
+| Browser UI | Visual editing, manual inspection, quick playground checks | Repeatable automation, large scripted edits |
+| REST API | Listing flows, fetching JSON, updating flows, uploading files, running flows, build jobs | Heavy human judgment about canvas layout |
+| MCP project endpoint | Giving an agent project tools that wrap selected LangFlow flows | Replacing server auth, fixing broken project IDs |
+| Codex or scripts | Reproducible edits, validation, publishing runbooks, test commands | Blindly changing flow JSON without re-fetching and comparing |
+
+<Tip>
+The browser is the editor. The REST API is the control plane. MCP is the agent-facing tool bridge. Keeping those roles separate prevents one article from becoming a mixture of deployment, debugging, and automation details.
+</Tip>
+
+## The Workflow
+
+<Steps>
+  <Step title="Authenticate every REST call with x-api-key">
+    LangFlow API calls should include the API key in the `x-api-key` header:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      | jq 'length'
+    ```
+
+    This command is safe to publish because it uses `$LANGFLOW_API_KEY` instead of a literal key.
+  </Step>
+
+  <Step title="List flows before touching a specific flow">
+    Start with an inventory:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      | jq '.[] | {id, name, folder_id}'
+    ```
+
+    This proves the key works and helps confirm that `$FLOW_ID` belongs to the intended server.
+  </Step>
+
+  <Step title="Fetch a flow and inspect graph shape">
+    Fetch the target flow into a local temporary file:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      -o /tmp/langflow-flow.json
+    ```
+
+    Inspect the graph before editing:
+
+    ```bash
+    jq '{
+      id,
+      name,
+      nodes: (.data.nodes | length),
+      edges: (.data.edges | length)
+    }' /tmp/langflow-flow.json
+    ```
+
+    Node and edge counts are simple, but they catch many accidental edits.
+  </Step>
+
+  <Step title="Edit flow JSON using a copy">
+    LangFlow canvas state is stored in flow JSON. The safe edit loop is:
+
+    ```text
+    fetch flow
+    -> edit a copy
+    -> validate JSON
+    -> PUT complete flow body
+    -> re-fetch and compare
+    ```
+
+    Example: remove edges connected to a component only after naming that component explicitly:
+
+    ```bash
+    export COMPONENT_ID="example-component-id"
+
+    jq --arg id "$COMPONENT_ID" '
+      .data.edges |= map(select(.source != $id and .target != $id))
+    ' /tmp/langflow-flow.json > /tmp/langflow-flow-edited.json
+    ```
+
+    Validate the edited file:
+
+    ```bash
+    jq '{name, nodes: (.data.nodes | length), edges: (.data.edges | length)}' \
+      /tmp/langflow-flow-edited.json
+    ```
+  </Step>
+
+  <Step title="Save a complete flow update">
+    Send the full edited flow body back with `PUT`:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X PUT \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      --data-binary @/tmp/langflow-flow-edited.json \
+      | jq '{id, name}'
+    ```
+
+    Re-fetch immediately:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      -o /tmp/langflow-flow-after-save.json
+    ```
+
+    Then compare graph shape:
+
+    ```bash
+    jq '{nodes: (.data.nodes | length), edges: (.data.edges | length)}' \
+      /tmp/langflow-flow-after-save.json
+    ```
+  </Step>
+
+  <Step title="Create a small flow when you need a test target">
+    Use a tiny flow to test auth and project behavior before editing a real long flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      -X POST \
+      "$LANGFLOW_BASE_URL/api/v1/flows/" \
+      -d '{"name":"API Smoke Test","description":"Created from a public-safe command","data":{"nodes":[],"edges":[]}}' \
+      | jq '{id, name}'
+    ```
+
+    Keep destructive cleanup out of public runbooks unless the target and approval rules are explicit.
+  </Step>
+
+  <Step title="Upload files for a flow">
+    Upload a file to a flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -F "file=@/path/to/input.pdf" \
+      "$LANGFLOW_BASE_URL/api/v1/files/upload/$FLOW_ID" \
+      | jq
+    ```
+
+    List files associated with the flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/files/list/$FLOW_ID" \
+      | jq
+    ```
+
+    File upload is useful for PDF workflows, but do not publish real file names when they reveal private work.
+  </Step>
+
+  <Step title="Run a flow with a small input first">
+    Run the flow:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/run/$FLOW_ID?stream=false" \
+      -d '{"inputs":{"input_value":"test input"},"tweaks":{}}' \
+      | jq
+    ```
+
+    For long PDF or research flows, start with a small input. Full-document runs hide failures and cost more.
+  </Step>
+
+  <Step title="Use build jobs for partial validation">
+    A build job can stop at a specific component:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$FLOW_ID/flow?stop_component_id=ComponentIdHere" \
+      -d '{"inputs":{"input_value":"test input"},"tweaks":{}}' \
+      | jq
+    ```
+
+    If the response returns a job ID, stream events:
+
+    ```bash
+    export JOB_ID="example-job-id"
+
+    curl --compressed -sS -N \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$JOB_ID/events"
+    ```
+
+    Use the debugging playbook when event streams hang, return vague red-box errors, or point at an unexpected component.
+  </Step>
+
+  <Step title="Expose a LangFlow project as MCP tools">
+    A LangFlow project MCP endpoint has this shape:
+
+    ```text
+    /api/v1/mcp/project/{project_id}/streamable
+    ```
+
+    Check project MCP metadata first:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$PROJECT_ID" \
+      | jq
+    ```
+
+    Bridge the streamable endpoint with `mcp-proxy`:
+
+    ```bash
+    uvx mcp-proxy \
+      --transport streamablehttp \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$PROJECT_ID/streamable"
+    ```
+  </Step>
+
+  <Step title="Configure an MCP client">
+    A Codex-style MCP config can point at the same project endpoint:
+
+    ```toml
+    [mcp_servers.langflow_project]
+    command = "uvx"
+    args = [
+      "mcp-proxy",
+      "--transport",
+      "streamablehttp",
+      "https://langflow.example.com/api/v1/mcp/project/PROJECT_ID_FROM_LANGFLOW/streamable"
+    ]
+    startup_timeout_sec = 120.0
+    ```
+
+    MCP does not bypass LangFlow server state. If the base URL, project ID, or transport is wrong, the client will not see the expected tools.
+  </Step>
+</Steps>
+
+## Keep Local Long Flows Boring
+
+For local development, the most stable pattern is:
+
+```text
+one local LangFlow server
+one predictable port
+one long flow
+one API key source
+one MCP project endpoint
+```
+
+In practice, that often means:
+
+```bash
+export LANGFLOW_BASE_URL="http://localhost:7860"
+```
+
+Check duplicate local servers before blaming the flow:
+
+```bash
+for port in 7860 7861 7863 7865; do
+  lsof -nP -iTCP:$port -sTCP:LISTEN
+done
+```
+
+If a long flow has an expensive Agent or nested tool branch, keep that branch disconnected from the default route unless the current run explicitly needs it.
+
+## What Belongs In Other Notes
+
+This note intentionally does not cover everything:
+
+- VPS installation, Docker Compose, domain setup, and HTTPS belong in [Deploy LangFlow On A VPS And Build Flows Through MCP](/docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp).
+- Browser red boxes, stale sessions, `database is locked`, build event debugging, and custom component artifact design belong in [LangFlow Debugging Playbook](/docs/notes/2026/06/2026-06-02-langflow-debugging-playbook).
+- Long PDF-to-LaTeX flow architecture belongs in [Generate A Whole Book With LangFlow](/docs/notes/2026/06/2026-06-02-generate-a-whole-book-with-langflow).
+
+This boundary keeps the LangFlow series readable: deployment explains how the server exists, operations explains how to control it, debugging explains how to isolate failures, and the book-generation note explains one substantial flow built on top.
+
+## Common Failure Modes
+
+<Warning>
+**The API key is correct, but the command points at the wrong server.** Always print or inspect `$LANGFLOW_BASE_URL` before editing a flow. A local and remote server can both be healthy while containing different flows.
+</Warning>
+
+<Warning>
+**The browser shows an error while API calls still work.** Treat this as a browser-session or frontend problem first. Do not rewrite the flow until server health and API auth are proven.
+</Warning>
+
+<Warning>
+**A flow update saves but the graph changes unexpectedly.** Re-fetch and compare node and edge counts. If counts changed more than expected, inspect the JSON diff before running the flow.
+</Warning>
+
+<Warning>
+**MCP tools do not appear in the client.** Check the project metadata endpoint, the `/streamable` suffix, `mcp-proxy` transport, base URL, and project ID. MCP depends on the LangFlow project endpoint being correct.
+</Warning>
+
+<Warning>
+**A long flow gets slow or expensive.** Check whether a heavy Agent, nested Run Flow branch, or tool path became part of the default route. Long workflows should have small stopped-build tests before full runs.
+</Warning>
+
+## Validation Checklist
+
+- [ ] `curl -fsS "$LANGFLOW_BASE_URL/health_check"` succeeds.
+- [ ] `$LANGFLOW_API_KEY` is set in the shell or secret store, not pasted into the note.
+- [ ] `GET /api/v1/flows/?get_all=true` lists flows.
+- [ ] `GET /api/v1/flows/$FLOW_ID` fetches the intended flow.
+- [ ] Flow JSON is edited in a copy and validated with `jq`.
+- [ ] Full flow updates use `PUT /api/v1/flows/$FLOW_ID`.
+- [ ] File uploads use `POST /api/v1/files/upload/$FLOW_ID`.
+- [ ] Test runs use `POST /api/v1/run/$FLOW_ID`.
+- [ ] Partial validation uses `POST /api/v1/build/$FLOW_ID/flow`.
+- [ ] MCP project metadata is reachable before configuring `mcp-proxy`.
+- [ ] The MCP client points at `/api/v1/mcp/project/$PROJECT_ID/streamable`.
+- [ ] Heavy Agent or nested tool branches are disconnected unless intentionally needed.
+
+## What To Remember
+
+LangFlow operations are mostly JSON, HTTP, and a few stable endpoints. Use the browser when visual editing matters, REST when reproducibility matters, and MCP when an agent needs project tools. Keep secrets out of notes, keep flow edits narrow, re-fetch after saving, and let other pillar notes own deployment and debugging details.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">api</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Deploy LangFlow On A VPS</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">LangFlow Debugging Playbook</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Generate A Whole Book With LangFlow</span>
+      </div>
+    </div>
+  </Card>
+</div>
