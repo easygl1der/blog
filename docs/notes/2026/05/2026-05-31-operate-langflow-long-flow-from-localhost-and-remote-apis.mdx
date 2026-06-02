@@ -39,9 +39,9 @@ The current long flow is:
 
 ```text
 Main Flow
-Flow ID: 074add69-c4ca-4380-aff6-52b83e0239be
-Local URL: http://localhost:7860/flow/074add69-c4ca-4380-aff6-52b83e0239be
-Project ID: 23b5fba1-b555-4baa-9bb0-6a784d52aaf1
+Flow ID: $FLOW_ID
+Local URL: http://localhost:7860/flow/$FLOW_ID
+Project ID: $PROJECT_ID
 ```
 
 The current operational decision is also important: do not connect the expensive `Agent` branch for routine runs. It can consume too many tokens and trigger unnecessary tool loading.
@@ -57,16 +57,16 @@ This is for future me using Codex with LangFlow through MCP and REST APIs. It as
 It is also useful when the same long flow must be operated in two places:
 
 - Local development on `http://localhost:7860`
-- Remote service such as `https://langflow.yitwah.site`
+- Remote service such as `https://langflow.example.com`
 
 ## Prerequisites
 
-- A local LangFlow virtual environment at `/Users/yitwah/langflow-local/.venv`
+- A local LangFlow virtual environment at `$LANGFLOW_LOCAL_DIR/.venv`
 - A LangFlow API key available in the shell as `LANGFLOW_API_KEY`
-- Codex MCP configuration at `/Users/yitwah/.codex/config.toml`
+- Codex MCP configuration at `$CODEX_CONFIG`
 - The long flow already present in LangFlow
 - `curl`, `jq`, and Python available locally
-- Optional remote LangFlow endpoint, for example `https://langflow.yitwah.site`
+- Optional remote LangFlow endpoint, for example `https://langflow.example.com`
 
 Check the local API key without printing it:
 
@@ -89,7 +89,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     Start LangFlow in a detached `screen` session:
 
     ```bash
-    screen -S langflow-7860 -dm bash -lc 'cd /Users/yitwah/langflow-local && exec /Users/yitwah/langflow-local/.venv/bin/python -m langflow.__main__ run --host 127.0.0.1 --port 7860 --no-open-browser --log-level info > /tmp/langflow-7860.log 2>&1'
+    screen -S langflow-7860 -dm bash -lc 'cd $LANGFLOW_LOCAL_DIR && exec $LANGFLOW_LOCAL_DIR/.venv/bin/python -m langflow.__main__ run --host 127.0.0.1 --port 7860 --no-open-browser --log-level info > /tmp/langflow-7860.log 2>&1'
     ```
 
     Confirm health:
@@ -109,7 +109,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     Avoid loading through the full project dashboard when working on a heavy canvas. Use the direct flow URL:
 
     ```text
-    http://localhost:7860/flow/074add69-c4ca-4380-aff6-52b83e0239be
+    http://localhost:7860/flow/$FLOW_ID
     ```
 
     Direct opening avoids some workspace browsing overhead and keeps the workflow focused.
@@ -125,7 +125,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
       "mcp-proxy",
       "--transport",
       "streamablehttp",
-      "http://localhost:7860/api/v1/mcp/project/23b5fba1-b555-4baa-9bb0-6a784d52aaf1/streamable"
+      "http://localhost:7860/api/v1/mcp/project/$PROJECT_ID/streamable"
     ]
     startup_timeout_sec = 120.0
     ```
@@ -154,7 +154,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     Fetch the long flow:
 
     ```bash
-    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    FLOW=$FLOW_ID
     curl --compressed -sS \
       -H "x-api-key: $LANGFLOW_API_KEY" \
       "http://localhost:7860/api/v1/flows/$FLOW" \
@@ -164,7 +164,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     Update a complete flow JSON:
 
     ```bash
-    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    FLOW=$FLOW_ID
     curl --compressed -sS \
       -H "x-api-key: $LANGFLOW_API_KEY" \
       -H "Content-Type: application/json" \
@@ -178,23 +178,23 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     Run the flow:
 
     ```bash
-    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    FLOW=$FLOW_ID
     curl --compressed -sS \
       -H "x-api-key: $LANGFLOW_API_KEY" \
       -H "Content-Type: application/json" \
       "http://localhost:7860/api/v1/run/$FLOW?stream=false" \
-      -d '{"inputs":{"input_value":"/Users/yitwah/Projects/pdf2latex/pdf/test.pdf"},"tweaks":{}}'
+      -d '{"inputs":{"input_value":"$PDF_PATH"},"tweaks":{}}'
     ```
 
     For a lighter test, build only until a specific component:
 
     ```bash
-    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    FLOW=$FLOW_ID
     curl --compressed -sS \
       -H "x-api-key: $LANGFLOW_API_KEY" \
       -H "Content-Type: application/json" \
       "http://localhost:7860/api/v1/build/$FLOW/flow?stop_component_id=CustomComponent-Kx7jD" \
-      -d '{"inputs":{"input_value":"/Users/yitwah/Projects/pdf2latex/pdf/test.pdf"},"tweaks":{}}'
+      -d '{"inputs":{"input_value":"$PDF_PATH"},"tweaks":{}}'
     ```
 
     The build endpoint returns a job ID. Stream events like this:
@@ -211,7 +211,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     For remote work, change only the base URL and API key source:
 
     ```bash
-    export LANGFLOW_REMOTE_BASE_URL="https://langflow.yitwah.site"
+    export LANGFLOW_REMOTE_BASE_URL="https://langflow.example.com"
     export LANGFLOW_REMOTE_API_KEY="set-this-in-your-shell-or-secret-store"
     ```
 
@@ -234,7 +234,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
             "mcp-proxy",
             "--transport",
             "streamablehttp",
-            "https://langflow.yitwah.site/api/v1/mcp/project/05314765-c54d-49c5-bc25-3ae5b302ebad/streamable"
+            "https://langflow.example.com/api/v1/mcp/project/$PROJECT_ID/streamable"
           ]
         }
       }
@@ -248,7 +248,7 @@ test -n "$LANGFLOW_API_KEY" && echo "LANGFLOW_API_KEY is set"
     Verification command:
 
     ```bash
-    FLOW=074add69-c4ca-4380-aff6-52b83e0239be
+    FLOW=$FLOW_ID
     curl --compressed -sS \
       -H "x-api-key: $LANGFLOW_API_KEY" \
       "http://localhost:7860/api/v1/flows/$FLOW" \
@@ -289,7 +289,7 @@ Use stopped builds to test individual components. They are faster and safer than
 
 - [ ] `curl http://127.0.0.1:7860/health_check` returns `{"status":"ok","chat":"ok","db":"ok"}`
 - [ ] `7861`, `7863`, and `7865` are not running old LangFlow servers
-- [ ] `http://localhost:7860/flow/074add69-c4ca-4380-aff6-52b83e0239be` opens the long flow
+- [ ] `http://localhost:7860/flow/$FLOW_ID` opens the long flow
 - [ ] `LANGFLOW_API_KEY` is set in the shell or secure Codex config
 - [ ] The MCP starter project URL uses `localhost:7860`
 - [ ] The admin MCP base URL uses `http://localhost:7860`

@@ -38,13 +38,13 @@ The latest working version is:
 
 ```text
 Perplexity Sonar - Planner Reranker Citations MVP
-https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Its run endpoint is:
 
 ```text
-https://langflow.yitwah.site/api/v1/run/6e66f96b-9365-4997-adef-c55e3352a3d2
+https://langflow.example.com/api/v1/run/$FLOW_ID
 ```
 
 <Info>
@@ -57,14 +57,14 @@ This guide is for future me or a teammate who wants to test, extend, or wrap the
 
 Starting assumptions:
 
-- The remote Langflow server is available at `https://langflow.yitwah.site`.
-- The SearXNG instance is available at `https://search.yitwah.site`.
+- The remote Langflow server is available at `https://langflow.example.com`.
+- The SearXNG instance is available at `https://search.example.com`.
 - The Langflow API key is loaded from `~/.zshrc` as `LANGFLOW_API_KEY`.
 - LLM calls should remain visible as separate Langflow nodes, not hidden inside crawler or planner components.
 
 ## Prerequisites
 
-- Remote Langflow access at `https://langflow.yitwah.site`.
+- Remote Langflow access at `https://langflow.example.com`.
 - API key in the shell:
 
 ```bash
@@ -75,13 +75,13 @@ echo "$LANGFLOW_API_KEY"
 - SearXNG JSON search endpoint available through:
 
 ```text
-https://search.yitwah.site/search?q=QUERY&format=json
+https://search.example.com/search?q=QUERY&format=json
 ```
 
 - The current main flow:
 
 ```text
-6e66f96b-9365-4997-adef-c55e3352a3d2
+$FLOW_ID
 ```
 
 ## The Workflow
@@ -155,7 +155,7 @@ curl --compressed -sS \
     "input_type": "chat",
     "output_type": "chat"
   }' \
-  "https://langflow.yitwah.site/api/v1/run/6e66f96b-9365-4997-adef-c55e3352a3d2"
+  "https://langflow.example.com/api/v1/run/$FLOW_ID"
 ```
   </Step>
 </Steps>
@@ -166,13 +166,13 @@ curl --compressed -sS \
 
 ```text
 Perplexity Sonar - Planner Reranker Citations MVP
-https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
 
 - Search Planner
-- SearXNG search through `https://search.yitwah.site`
+- SearXNG search through `https://search.example.com`
 - Domain filtering
 - Rule-based source scoring and reranking
 - URL opening and webpage content reading
@@ -186,7 +186,7 @@ This is the current main testing target.
 
 ```text
 Perplexity Search API - MVP
-https://langflow.yitwah.site/flow/a765119e-a487-4063-ad0d-2f0dfbd13259
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
@@ -203,7 +203,7 @@ Use this when testing the search facade separately from answering.
 
 ```text
 Perplexity Search API - With Content
-https://langflow.yitwah.site/flow/d0f9f7bf-84ae-41c3-b796-1cfae1f151b1
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
@@ -219,7 +219,7 @@ Use this when testing whether search results can be read as content.
 
 ```text
 Web Search Tools - MVP
-https://langflow.yitwah.site/flow/2c97d25f-463c-4c9e-91c9-fb112e653adb
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
@@ -234,7 +234,7 @@ Use this when preparing an Agent that calls search and open-url tools.
 
 ```text
 Local Sonar Chat - MVP v2
-https://langflow.yitwah.site/flow/b5a36d9e-5dd8-4785-a093-9400a51845d3
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
@@ -250,7 +250,7 @@ Use this as the simpler fallback when the planner/reranker/citation version is t
 
 ```text
 Agent Runs - MVP v2
-https://langflow.yitwah.site/flow/d8cd43fd-8882-479d-96f2-be9b6d6a7438
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
@@ -265,7 +265,7 @@ This is not yet a true autonomous planner loop. It is a schema and workflow foun
 
 ```text
 Onyx Web Crawler - Visual Pipeline V3
-https://langflow.yitwah.site/flow/1027fcd5-1ec5-4e58-9ca4-41c747832b87
+https://langflow.example.com/flow/$FLOW_ID
 ```
 
 Implements:
@@ -464,7 +464,7 @@ The current reranker is rule-based. It can boost docs and GitHub sources, but it
 
 ## Final Checklist
 
-- [ ] Main flow opens at `https://langflow.yitwah.site/flow/6e66f96b-9365-4997-adef-c55e3352a3d2`.
+- [ ] Main flow opens at `https://langflow.example.com/flow/$FLOW_ID`.
 - [ ] A plain prompt returns HTTP `200` from the Langflow run API.
 - [ ] Output JSON contains `answer`.
 - [ ] Output JSON contains non-empty `detected_chunk_citations`.
