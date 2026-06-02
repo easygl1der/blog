@@ -130,9 +130,15 @@ Keep as pillars:
 
 - `2026-06-02-generate-a-whole-book-with-langflow`
 - `2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp`
+- `2026-06-02-langflow-debugging-playbook`
 - `2026-06-02-recreate-perplexity-search-with-langflow`
 - `2026-06-02-deep-research-is-an-orchestration-loop`
+- `2026-06-02-crawler-reads-urls-search-finds-urls`
+- `2026-06-02-source-maps-chunk-citations-and-citation-validation`
 - `2026-06-02-codex-goal`
+- `2026-06-02-takenotes`
+- `2026-06-02-safe-git-collaboration-with-an-ai-agent`
+- `2026-06-02-build-codex-skills-for-repeatable-workflows`
 - `2026-06-02-vercel`
 - `2026-06-02-cloudflare-ip-dns`
 
@@ -147,33 +153,31 @@ These May notes contain useful raw material, but the June notes should become th
 
 ## Next Writing Order
 
-1. Expand and polish `Generate a Whole Book With LangFlow`.
-2. Create or refresh `LangFlow Debugging Playbook`.
-3. Merge Perplexity overlap into `Recreate Perplexity Search With LangFlow`.
-4. Refresh `Operate LangFlow Flows Through API And MCP`.
-5. Audit the May Perplexity notes and fold any remaining unique material into the June Perplexity pillar.
-6. Create `LangFlow Debugging Playbook` only after the API/MCP overlap is resolved.
+1. Refresh `Operate LangFlow Flows Through API And MCP` as the canonical API/MCP operations pillar.
+2. Audit the May LangFlow API notes and fold unique material into the refreshed API/MCP pillar.
+3. Audit the May Perplexity notes and fold remaining unique material into `Recreate Perplexity Search With LangFlow`.
+4. Decide whether `Perplexity Computer` is a case study section under the research-agent pillar or a standalone interaction article.
+5. Create new notes only after the existing overlap has been resolved.
 
 ## Immediate Quality Pass
 
-Next target: `2026-06-02-generate-a-whole-book-with-langflow`.
+Current target: `Operate LangFlow Flows Through API And MCP`.
 
-Why this is first:
+Why this is next:
 
-- It is the strongest pillar candidate because it ties together LangFlow, long workflows, PDF/OCR, LaTeX, repair loops, sidecar services, and output packaging.
-- It is specific to actual work, not a generic AI tutorial.
-- It can become the entry point for the whole LangFlow Systems series.
+- `Generate a Whole Book With LangFlow` already has the required architecture overview, deterministic/LLM separation, Custom Component boundary, sidecar boundary, failure modes, and evaluation checklist.
+- The remaining LangFlow weakness is overlap between May API notes, VPS deployment notes, MCP flow creation notes, and debugging notes.
+- A clean API/MCP operations pillar will let the book-generation and debugging notes link instead of repeating long command sequences.
 
 Quality pass requirements:
 
-1. Make the core question explicit: "How do I turn a long PDF or arXiv source into a complete, compilable LaTeX book project with LangFlow?"
-2. Add a high-level architecture diagram or text pipeline near the top.
-3. Separate deterministic stages from LLM-assisted stages.
-4. Add a "What belongs inside the Custom Component" section.
-5. Add a "What should stay outside LangFlow" section for sidecar compilation, storage, and secrets.
-6. Add an evaluation checklist: extraction quality, compile success, image recovery, table fallback, download links.
-7. Link back to the API/MCP and debugging pillars instead of repeating their full details.
-8. Remove any local-only paths or personal identifiers before publishing changes.
+1. Define one core question: "How do I operate LangFlow flows through REST APIs and MCP without relying on browser-only actions?"
+2. Merge useful material from `2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis` and `2026-05-31-operate-langflow-flows-through-api-and-mcp`.
+3. Keep deployment details in `Deploy LangFlow On A VPS And Build Flows Through MCP`.
+4. Keep red-box, build stream, and `database is locked` troubleshooting in `LangFlow Debugging Playbook`.
+5. Include privacy-safe commands for listing flows, fetching a flow, running a flow, uploading files, using project MCP endpoints, and validating output.
+6. Add explicit boundaries for when to use API, MCP, browser UI, and Codex tools.
+7. Remove real domains, local paths, flow IDs, project IDs, and API keys before publishing changes.
 
 ## Decision Rule For Future Notes
 
