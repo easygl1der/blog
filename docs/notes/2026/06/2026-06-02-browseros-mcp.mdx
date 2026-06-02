@@ -1,0 +1,185 @@
+---
+title: "用 BrowserOS MCP 做浏览器自动化"
+description: "A practical guide to using BrowserOS MCP with Claude Code and Codex for browser automation and development."
+date: "2026-06-02"
+type: "guide"
+tags: [browseros, mcp, browser-automation, codex, claude-code]
+status: "published"
+---
+
+# 用 BrowserOS MCP 做浏览器自动化
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">8 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    BrowserOS 把 Chromium 浏览器、MCP server、agent UI 和外部应用连接到同一个控制面，让 Claude Code 和 Codex 可以直接操作真实浏览器。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browseros</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browser-automation</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">claude-code</span>
+  </div>
+</div>
+
+## Summary
+
+BrowserOS 是一个开源的 AI-native Chromium fork，内置 MCP server，能把浏览器控制权暴露给 Claude Code、Codex、Gemini CLI、Claude Desktop 等 MCP client。它适合做真实浏览器里的自动化：打开页面、点击、输入、截图、读取 DOM/console、抽取登录态页面内容、跑本地网页测试，以及串联 Gmail、Slack、GitHub、Linear、Notion 等外部应用。
+
+二次开发要分清两条路：改 agent 层成本低，主要是 TypeScript/React/Go/Bun；改 Chromium/browser 层成本高，需要 Xcode、Chromium checkout、约 100GB 空间和长时间编译。多数功能应该先从 agent 层、MCP tools、扩展 UI 或 agent loop 入手。
+
+---
+
+## What This Solves
+
+过去用 AI agent 操作浏览器通常有几种麻烦：Chrome DevTools 需要单独开调试端口，Playwright 更像测试框架，很多网页自动化拿不到你真实浏览器里的登录态，外部应用又需要单独接很多 MCP server。
+
+BrowserOS 的思路是把浏览器本身变成 agent 工作台。它基于 Chromium，内置 AI agent、MCP server 和 browser tools。Claude Code 或 Codex 通过一个 MCP URL 接入后，就能把“打开 localhost、点登录、看 console error、截图、回到代码修复”变成一个闭环。
+
+核心资料：
+
+- BrowserOS MCP docs: [MCP Clients (Claude Code, OpenClaw)](https://docs.browseros.com/features/use-with-claude-code)
+- BrowserOS GitHub: [browseros-ai/BrowserOS](https://github.com/browseros-ai/BrowserOS)
+- BrowserOS browser build package: [packages/browseros](https://github.com/browseros-ai/BrowserOS/tree/main/packages/browseros)
+- BrowserOS agent package: [packages/browseros-agent](https://github.com/browseros-ai/BrowserOS/tree/main/packages/browseros-agent)
+- Chromium Mac build docs: [Checking out and building Chromium for Mac](https://chromium.googlesource.com/chromium/src/+/main/docs/mac_build_instructions.md)
+
+## Who This Is For
+
+这篇笔记适合想用 Claude Code、Codex 或其他 MCP client 控制真实浏览器的人。典型使用者是前端开发、全栈开发、自动化测试、数据抽取、运营工具自动化、个人工作流自动化，以及想研究 BrowserOS 二次开发路线的人。
+
+如果只是想自动化网页任务，不需要一开始就改 Chromium。先把 BrowserOS 安装好，接上 MCP client，用现成工具跑起来；只有当你要改浏览器内核、系统级集成、打包签名、Chromium patch 时，才进入 browser 层开发。
+
+## Prerequisites
+
+- 已安装 BrowserOS，并能打开设置页。
+- Claude Code 或 Codex CLI 等 MCP client。
+- BrowserOS MCP server URL，通常在 `chrome://browseros/mcp` 里复制，示例是 `http://127.0.0.1:9239/mcp`。
+- 如果要访问 Gmail、Slack、GitHub 等外部应用，需要按 BrowserOS 的 OAuth 流程授权。
+- 如果要做 BrowserOS agent 层开发，需要 Node/Bun/TypeScript/React/Go 相关环境。
+- 如果要做 Chromium/browser 层开发，macOS 需要 Xcode + Command Line Tools，并预留约 100GB 磁盘空间。
+
+<Info>
+BrowserOS GitHub README 把项目描述为 open-source Chromium fork，并标注 AGPL-3.0。README 还把仓库拆成两个主系统：`packages/browseros` 是 Chromium fork/build/signing，`packages/browseros-agent` 是 MCP server、agent UI、CLI 和 evaluation framework。
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="在 BrowserOS 里开启 MCP server">
+    打开 BrowserOS，进入 MCP 设置页。官方文档给出的入口是 `chrome://browseros/mcp`，也可以从 Settings 里的 BrowserOS MCP 入口进入。复制页面展示的 Server URL，例如：
+
+```text
+http://127.0.0.1:9239/mcp
+```
+  </Step>
+  <Step title="把 BrowserOS 接到 Claude Code">
+    Claude Code 可以通过 HTTP transport 添加 MCP server。官方示例命令是：
+
+```bash
+claude mcp add --transport http browseros http://127.0.0.1:9239/mcp --scope user
+```
+
+之后启动 Claude Code，让它直接描述浏览器任务：
+
+```text
+Open localhost:3000 in BrowserOS, click the login button, and report console errors.
+```
+  </Step>
+  <Step title="把 BrowserOS 接到 Codex">
+    Codex CLI 也可以添加同一个 MCP URL：
+
+```bash
+codex mcp add browseros http://127.0.0.1:9239/mcp --transport http
+```
+
+接上之后，Codex 就可以使用 BrowserOS 暴露的浏览器自动化工具。对开发最有用的是：打开本地网页、读取页面内容、获取 DOM、点击元素、输入文本、截图、读 console、下载文件、管理 tab/window。
+  </Step>
+  <Step title="把浏览器自动化写成开发闭环">
+    最实用的提示词不是“控制浏览器”，而是给一个可验证任务：
+
+```text
+In BrowserOS, open http://localhost:3000, complete the signup flow with test data, take a screenshot of the final page, inspect console errors, then fix the code and rerun the flow.
+```
+
+这个模式把浏览器检查、代码修改、测试验证连在一起，适合配合 Codex 的 `/goal` 长任务使用。
+  </Step>
+  <Step title="用 BrowserOS 做登录态页面和外部应用自动化">
+    BrowserOS 是真实浏览器，因此可以处理已经登录的页面。官方示例包括抽取 LinkedIn profile、读取 Gmail、创建 Linear issue、发 Slack summary、截图保存到本地等。这里的重点不是爬虫，而是让 agent 在你的授权环境里完成重复操作。
+  </Step>
+  <Step title="先从 agent 层二开">
+    BrowserOS 官方 contributing 文档明确说大多数人从 agent 开始，因为它更容易设置和迭代。agent 层可以改 AI agent features/tools、UI/UX、browser automation、测试和文档，主要技术栈是 TypeScript、React、Chrome APIs。
+  </Step>
+  <Step title="只有必要时再改 Chromium/browser 层">
+    Browser 层负责 Chromium patches、build system、platform features 和核心浏览器逻辑。BrowserOS 的 `packages/browseros` README 说明它会 fetch Chromium source、应用 BrowserOS patches、构建并签名 macOS/Windows/Linux 二进制。这个路径成本高，但可以改到浏览器级能力。
+  </Step>
+</Steps>
+
+<Tip>
+优先级建议：先用现成 BrowserOS MCP 跑自动化；如果现成 tools 不够，再扩展 agent server/tool；只有当需求必须进入 Chromium patch、打包签名、浏览器原生 UI 或系统集成时，才进入 browser 层。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+不要一开始就 fork Chromium 做二开。Chromium checkout 和 build 都很重，BrowserOS contributing 文档写到 browser development 需要约 100GB disk、推荐 16GB+ RAM，首次构建可能要数小时。macOS 还需要 Xcode + Command Line Tools。
+</Warning>
+
+<Warning>
+Claude Code 有跳过每次浏览器动作确认的选项，但这类模式只适合受控环境。涉及账号、付款、生产系统、删除记录、发送消息、提交表单时，不要让 agent 无限制自动确认。
+</Warning>
+
+<Warning>
+BrowserOS MCP 可以读取登录态页面和浏览历史，也能连接外部应用。自动化越强，权限边界越重要。给 agent 的任务要写清楚允许做什么、不允许做什么、最终只读还是可写。
+</Warning>
+
+<Warning>
+如果 MCP URL 变了、BrowserOS 没启动、端口被占用，Claude Code/Codex 会连不上 server。先回到 `chrome://browseros/mcp` 复制最新 URL，再更新 MCP client 配置。
+</Warning>
+
+<Warning>
+如果你要改 agent 层，不要假设端口只有一个。BrowserOS agent README 里区分了 server port、CDP port、extension port，开发时要保持 `.env.development` 里的端口一致。
+</Warning>
+
+## Final Checklist
+
+- [ ] BrowserOS 已安装并能打开 `chrome://browseros/mcp`。
+- [ ] Claude Code 或 Codex 已添加 BrowserOS MCP URL。
+- [ ] 能让 agent 打开一个网页并返回页面状态或截图。
+- [ ] 自动化任务写清楚了允许动作、禁止动作和验收结果。
+- [ ] 需要登录态或外部应用时，已经完成 OAuth/登录，并明确数据边界。
+- [ ] 二开前先判断需求属于 agent 层还是 browser 层。
+- [ ] 如果进入 browser 层，已准备 Xcode、Command Line Tools、约 100GB 空间和足够构建时间。
+
+## What To Remember
+
+BrowserOS 的价值不是单纯“多一个浏览器”，而是把真实浏览器变成 MCP 可控的 agent runtime。Claude Code 和 Codex 可以通过它做前端测试、页面排错、资料抽取、截图、表单流、登录态页面操作和跨应用工作流。
+
+二次开发时最重要的判断是层级：agent 层轻、快、适合多数自动化和工具能力；browser 层重、慢、但能改 Chromium 级行为。先用 BrowserOS MCP 把工作流跑通，再决定是否需要改 agent server/tool、扩展 UI，最后才考虑 Chromium fork 级改造。
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browseros</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browser-automation</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">claude-code</span>
+    </div>
+    **Related:** [[codex-goal]], [[agent-workflow]], [[browser-automation]], [[mcp]]
+  </Card>
+</div>
