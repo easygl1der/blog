@@ -1,0 +1,399 @@
+---
+title: "How To Use And Recreate Mintlify"
+description: "A practical guide to using and deploying Mintlify, understanding its advantages, pricing, feature set, Anthropic-style adoption, and realistic product replication options."
+date: "2026-06-02"
+type: "guide"
+tags: [mintlify, documentation, deployment, developer-experience, saas]
+status: "published"
+---
+
+# How To Use And Recreate Mintlify
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">13 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Mintlify 的价值不是“又一个静态文档模板”，而是把 Git、MDX、API reference、搜索、AI 可读性、协作和托管部署打包成一个开发者文档平台。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mintlify</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">docs</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">deployment</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">saas</span>
+  </div>
+</div>
+
+## Summary
+
+Mintlify 是一个面向开发者文档、API 文档、知识库和帮助中心的 SaaS。它用 `docs.json` 管配置，用 MDX 写内容，用 Git 同步和托管平台完成部署，同时提供 API playground、搜索、内置组件、Web editor、AI assistant、MCP server、analytics、feedback、custom domain、SSO 和企业安全能力。
+
+它适合那些不想维护自建 Docusaurus/Nextra/Next.js 文档基础设施，但又希望文档足够现代、可搜索、可被 AI 工具读取、能接 OpenAPI、能快速部署的团队。复刻 Mintlify 可以复刻“文档站生成器”和一部分前端体验，但完整复刻它的 SaaS、协作、AI、搜索、托管和企业能力，是一个中大型产品工程。
+
+---
+
+## What This Solves
+
+Mintlify 解决的是开发者文档长期最麻烦的几个问题：
+
+- 文档要像代码一样进 Git，能 review、能版本管理。
+- API 文档要能从 OpenAPI 生成，而不是手工维护。
+- 写作体验要比纯 Markdown 强，能用组件、卡片、步骤、提示、代码组。
+- 部署要简单，不应该每次都维护 Next.js、CDN、搜索索引和构建 pipeline。
+- 文档要对人和 AI 都友好，既能被开发者浏览，也能被 LLM、agent、MCP 工具消费。
+- 大公司需要权限、SSO、SLA、安全审查、迁移支持和 analytics。
+
+如果只做一个个人博客，Mintlify 可能不是最低成本方案。但如果目标是产品文档、API reference、SDK 文档、帮助中心、AI-ready docs，它的集成度就很强。
+
+## Who This Is For
+
+这篇笔记适合三类人：
+
+- 想用 Mintlify 快速搭建文档站的人。
+- 想理解为什么 Anthropic、Anaconda、Fidelity、AT&T 等团队会采用 Mintlify 的人。
+- 想评估能否复刻 Mintlify、用开源仓库自建类似产品的人。
+
+这里的判断基于 2026-06-02 查到的官方页面和 GitHub 信息。Mintlify 的具体价格、套餐和功能可能会变，正式采购前应该重新看官方 pricing 和合同条款。
+
+## Prerequisites
+
+- 一个 GitHub 仓库。
+- Node.js 和 `npm` 或 `npx`。
+- Mintlify 账号。
+- 一个 `docs.json` 配置文件。
+- 一组 `.mdx` 文档页面。
+- 如果要做 API reference，需要 OpenAPI spec。
+- 如果要部署生产站点，需要 custom domain、DNS 权限和 Mintlify GitHub app。
+
+## The Workflow
+
+<Steps>
+  <Step title="从 starter 开始">
+    最快的路线是使用 Mintlify starter repository。官方 starter 说明里写得很直接：复制模板后，可以得到 guide pages、navigation、customizations、API reference pages 和常用 components 示例。
+
+    基本本地开发命令是：
+
+    ```bash
+    npm i -g mint
+    mint dev
+    ```
+
+    也可以不全局安装，直接用：
+
+    ```bash
+    npx --yes @mintlify/cli@latest dev
+    ```
+
+    本地预览通常在：
+
+    ```text
+    http://localhost:3000
+    ```
+  </Step>
+
+  <Step title="理解 docs.json 的作用">
+    Mintlify 的核心配置文件是 `docs.json`。它定义主题、站点名、颜色、导航、页面分组、logo、API reference、search、integrations 等配置。
+
+    一个最小结构大概是：
+
+    ```json
+    {
+      "$schema": "https://mintlify.com/docs.json",
+      "theme": "mint",
+      "name": "Example Docs",
+      "navigation": {
+        "groups": [
+          {
+            "group": "Guides",
+            "pages": ["quickstart"]
+          }
+        ]
+      }
+    }
+    ```
+
+    这让内容和导航都在 Git 里，而不是只存在后台数据库里。
+  </Step>
+
+  <Step title="用 MDX 写文档">
+    Mintlify 页面通常是 `.mdx`。它保留 Markdown 的轻量写作方式，同时允许使用内置组件。
+
+    常用内容结构是：
+
+    ```mdx
+    ---
+    title: "Quickstart"
+    description: "Install and deploy the product."
+    ---
+
+    # Quickstart
+
+    <Steps>
+      <Step title="Install">
+        Run the CLI.
+      </Step>
+    </Steps>
+    ```
+
+    对产品文档来说，MDX 的好处是页面既能保持文本可维护，又能有足够的交互和视觉结构。
+  </Step>
+
+  <Step title="接入 Git 同步和自动部署">
+    官方 starter README 说明，安装 Mintlify GitHub app 后，repo 改动可以同步到 deployment；推送到默认分支后会自动部署到 production。
+
+    实际工作流一般是：
+
+    ```text
+    edit .mdx / docs.json
+    -> mint dev local preview
+    -> git commit
+    -> git push
+    -> Mintlify sync and deploy
+    ```
+
+    这对团队很重要：工程师仍然用熟悉的 PR 和 Git review 流程，文档团队也能用 Web editor 快速改内容。
+  </Step>
+
+  <Step title="为 API reference 接 OpenAPI">
+    Mintlify 对 API 文档的核心吸引力之一是 API playground 和 OpenAPI 支持。你可以把 OpenAPI spec 接进文档，然后生成 API reference 页面，让读者在文档里看 endpoint、参数、响应、示例请求。
+
+    对 API 公司来说，这比手写 endpoint 页面可靠得多，因为 schema、示例和文档可以从同一份规范派生。
+  </Step>
+
+  <Step title="配置搜索、AI 和 LLM 入口">
+    Mintlify 官方 docs 页面把自己描述为 AI-native 文档平台，强调 beautiful defaults、interactive API playgrounds 和 smart search。当前 pricing 页也列出了 Assistant、Writing agent、Workflows、MCP server、Agent analytics、Advanced insights、Agent feedback 等能力。
+
+    对今天的开发者文档来说，搜索已经不只是站内搜索框。文档还需要：
+
+    - 被 LLM 正确读取。
+    - 能输出适合 AI 消费的 markdown。
+    - 能通过 MCP 或 agent 工具进入开发环境。
+    - 能分析用户和 agent 到底在哪里找不到答案。
+  </Step>
+
+  <Step title="部署到自定义域名">
+    产品文档通常会放在：
+
+    ```text
+    docs.example.com
+    ```
+
+    使用 Mintlify 时，通常是在 Mintlify dashboard 里配置 custom domain，再在 DNS 服务商处添加 CNAME 或相关记录。自定义域名是 Starter 当前公开页就列出的能力之一。
+
+    如果不用 Mintlify 托管，也可以把内容导出或迁移到其他静态站方案，但会失去 Mintlify 托管平台提供的一部分搜索、AI、分析和协作能力。
+  </Step>
+
+  <Step title="上线前做文档质量检查">
+    我自己的博客发布流程会在提交前跑：
+
+    ```bash
+    npx --yes @mintlify/cli@latest validate
+    npx --yes @mintlify/cli@latest broken-links --check-anchors --check-redirects --check-snippets
+    npx --yes @mintlify/cli@latest a11y
+    npx --yes @mintlify/cli@latest dev --no-open
+    ```
+
+    这比只看页面能不能打开更可靠，因为它能提前发现 broken links、anchor 错误、snippet 问题和 accessibility 问题。
+  </Step>
+</Steps>
+
+## Why Teams Use It
+
+Anthropic 这类公司选择 Mintlify 的原因，不只是页面好看。Mintlify 官方 Anthropic customer story 的标题和描述很明确：Anthropic 用 Mintlify 加速 AI development 和 adoption。文中还提到 Anthropic 从 2024 年开始和 Mintlify 合作，并且现在每月有超过 150 万开发者依赖 Anthropic docs。
+
+这类 AI 公司对文档有几个特殊需求：
+
+- API 更新非常快，文档不能成为发布瓶颈。
+- 开发者第一次接触产品时，文档就是主要 onboarding。
+- SDK、API reference、模型说明、prompt 示例、错误码和迁移指南都要清楚。
+- 文档需要能被 ChatGPT、Claude、Cursor、Codex 等 AI 工具读取。
+- AI agent 时代，文档还要能暴露成 MCP、markdown export、LLM-friendly 格式。
+
+换句话说，Mintlify 的卖点正好打在 AI 公司最痛的地方：文档既是人看的产品界面，也是 AI 工具调用和理解产品的知识入口。
+
+## Feature Map
+
+Mintlify 当前公开材料里能看到的功能可以分成几组。
+
+内容和配置：
+
+- `docs.json` 配置。
+- MDX 页面。
+- 内置组件。
+- 自定义 CSS 和 JS。
+- 多主题和外观配置。
+- 导航、分组、页面 metadata。
+
+开发者文档：
+
+- API playground。
+- OpenAPI / Swagger 相关 API reference。
+- 代码块、步骤、卡片、callout、tabs 等组件。
+- Git sync。
+- Web editor。
+- Changelog。
+
+AI 和搜索：
+
+- Search。
+- Assistant。
+- Writing agent。
+- Workflows。
+- MCP server。
+- Agent skills。
+- LLM-friendly markdown exports。
+- Agent analytics 和 feedback。
+
+团队和企业：
+
+- Custom domain。
+- Role-based permissions。
+- SSO。
+- Performance SLA。
+- Enterprise security and legal。
+- Migration and support。
+- Analytics、user feedback、advanced insights。
+
+<Info>
+Mintlify 的优势来自“组合”：如果只看 MDX，很多框架都能做；如果只看托管，Vercel 也能做；如果只看 API docs，Scalar、Redoc、Stoplight 也能做。Mintlify 把这些放在一个开发者文档平台里。
+</Info>
+
+## Pricing Notes
+
+2026-06-02 查到的 Mintlify pricing 页显示：
+
+- Starter: `$0`，面向 individuals and small teams。
+- Starter 包含 full platform、custom domain、web editor、assistant、writing agent、workflows、MCP server。
+- 页面写着可以免费开始，并提供 14 day trial，no credit card required。
+- Enterprise: contact us，面向 scaling and global teams。
+- Enterprise 包含 Starter 的内容，并增加 role-based permissions、performance SLA、SSO、agent analytics、advanced insights、enterprise security and legal、migration and support。
+- Credits: pricing 页显示 trial / included credits 和 overage 信息，页面上可见 `$0.01` overages 字样，但实际企业套餐应以官方页面和合同为准。
+
+<Warning>
+不要把公开页的 `$0` 理解成所有团队都永久免费。Starter 可以启动项目，但企业采购通常要考虑 SSO、权限、SLA、安全审查、迁移支持、credit 用量、agent 功能和合同条款。
+</Warning>
+
+## Replication Strategy
+
+Mintlify 可以复刻吗？答案是：可以复刻一部分，但不要低估完整产品。
+
+能相对容易复刻的部分：
+
+- `docs.json` 风格的配置文件。
+- MDX 页面渲染。
+- 侧边栏和导航。
+- 主题和 Tailwind UI。
+- 静态导出。
+- GitHub Actions 自动构建。
+- OpenAPI 到 API reference 的基础生成。
+- 基于 Algolia、Meilisearch 或 Pagefind 的搜索。
+
+可以参考的公开仓库包括：
+
+- [mintlify/docs](https://github.com/mintlify/docs): 官方 Mintlify documentation，GitHub API 显示为 MIT License。
+- [mintlify/starter](https://github.com/mintlify/starter): starter kit。
+- [mintlify/components](https://github.com/mintlify/components): documentation UI components。
+- [mintlify/mdx](https://github.com/mintlify/mdx): Mintlify markdown parser。
+- [mintlify/themes](https://github.com/mintlify/themes): theme starter examples。
+- [mintlify/scalar](https://github.com/mintlify/scalar): OpenAPI / API reference 相关能力。
+
+难复刻的部分：
+
+- 多租户 SaaS dashboard。
+- GitHub app 同步和权限模型。
+- Web editor 的协作体验。
+- 高质量全文搜索和索引服务。
+- AI assistant 的检索、上下文构建、回答质量和安全边界。
+- MCP server、agent workflows、agent analytics。
+- 企业级 SSO、RBAC、审计、安全、SLA、迁移支持。
+- 大量文档站的托管、缓存、构建队列和边缘性能。
+
+如果要做一个“Mintlify-like MVP”，合理技术路线是：
+
+```text
+MDX content
+-> docs.json navigation parser
+-> Next.js / Astro renderer
+-> static build
+-> OpenAPI renderer
+-> search index
+-> GitHub Actions deploy
+-> optional AI assistant with RAG
+```
+
+如果要做一个商业级 Mintlify 竞品，则要变成：
+
+```text
+multi-tenant SaaS
+-> repo sync and import
+-> web editor
+-> permissions and SSO
+-> docs build pipeline
+-> API reference generator
+-> search and analytics
+-> AI assistant and MCP layer
+-> domain and deployment management
+-> enterprise support
+```
+
+<Tip>
+复刻时最聪明的切入点不是“完整复刻 Mintlify”，而是做一个垂直版本：比如只做 AI-ready docs exporter、只做 OpenAPI docs + MCP、只做个人知识库 Mintlify clone，或者只做面向 LangFlow/agent 的文档 RAG 平台。
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+**把 Mintlify 当成普通静态站模板。** 这样会低估它的 SaaS 价值。Mintlify 的 moat 不在单个页面组件，而在 Git sync、托管、搜索、AI、API reference、analytics 和企业能力的组合。
+</Warning>
+
+<Warning>
+**认为公开 GitHub 仓库等于完整开源产品。** Mintlify 有公开 docs、starter、components、mdx、themes 等仓库，但这不代表 dashboard、部署系统、AI assistant、企业权限和 analytics 全部开源。
+</Warning>
+
+<Warning>
+**只追求视觉复刻。** 文档产品真正难的是内容工作流、API schema、搜索质量、信息架构、迁移、版本、权限和更新速度。页面好看只是第一层。
+</Warning>
+
+<Warning>
+**忽略 AI-ready docs。** 现在文档的读者不仅是人，还有 LLM 和 agent。Anthropic 这类 AI 公司重视 Mintlify，很大一部分原因是文档要进入 AI 工具链。
+</Warning>
+
+## Final Checklist
+
+- [ ] 用 starter 或现有 repo 建立 `docs.json`。
+- [ ] 用 `.mdx` 写页面，并给每页加 `title` 和 `description`。
+- [ ] 在本地跑 `mint dev` 预览。
+- [ ] 用 `mint validate` 检查构建。
+- [ ] 用 `mint broken-links` 检查链接。
+- [ ] 用 `mint a11y` 检查可访问性。
+- [ ] 接入 GitHub app 或自己的部署 pipeline。
+- [ ] 配置 custom domain。
+- [ ] 如果是 API 产品，接入 OpenAPI spec。
+- [ ] 如果要复刻产品，先限定 MVP 范围，不要一开始就做完整 SaaS。
+
+## What To Remember
+
+Mintlify 的核心优势是把开发者文档的内容层、展示层、部署层和 AI 消费层连起来。它不是最便宜的静态站方案，也不是唯一能写 MDX 的工具，但它把产品文档团队最常见的需求收进一个平台里。
+
+如果目标是快速上线专业文档，直接用 Mintlify 很合理。如果目标是学习或做垂直产品，可以复刻它的公开部分和工作流。但如果目标是完整复刻 Mintlify SaaS，就要按一个文档基础设施公司来估算工程量，而不是按一个前端模板估算。
+
+## Sources
+
+- [Mintlify documentation](https://www.mintlify.com/docs)
+- [Mintlify pricing](https://www.mintlify.com/pricing)
+- [Mintlify Anthropic customer story](https://www.mintlify.com/customers/anthropic)
+- [Mintlify starter repository](https://github.com/mintlify/starter)
+- [Mintlify docs repository](https://github.com/mintlify/docs)
+- [Mintlify GitHub organization](https://github.com/mintlify)
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** mintlify · documentation · deployment · developer-experience · saas  
+  **Related:** [[Deploy LangFlow On A VPS And Build Flows Through MCP]] · [[How To Recreate Perplexity Computer In Langflow]]
+</Card>
