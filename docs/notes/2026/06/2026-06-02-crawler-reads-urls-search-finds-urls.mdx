@@ -1,0 +1,329 @@
+---
+title: "Crawler Reads URLs, Search Finds URLs"
+description: "A practical guide to separating search providers, crawlers, content extractors, rerankers, and citation builders in a Perplexity-like research pipeline."
+date: "2026-06-02"
+type: "guide"
+tags: [search, crawler, rag, citations, langflow]
+status: "published"
+---
+
+# Crawler Reads URLs, Search Finds URLs
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">9 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Keep search, crawling, extraction, ranking, and citations as separate responsibilities so a research agent stays debuggable.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">search</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">crawler</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">rag</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">citations</span>
+  </div>
+</div>
+
+## Summary
+
+The most useful rule for building Perplexity-like or Deep Research-style systems is simple: search finds candidate URLs, crawlers read URLs, rerankers choose evidence, and citation builders preserve traceability. Mixing these responsibilities makes the system hard to debug and weakens answer quality.
+
+This note explains the boundary between SearXNG-style search, Firecrawl-style extraction, Exa-style semantic discovery, Onyx-style crawling, and LangFlow orchestration.
+
+---
+
+## What This Solves
+
+When building web research flows, it is tempting to call everything "web search." That creates confused systems:
+
+- A crawler is asked to discover pages even though it only knows how to read pages.
+- A search provider is treated as evidence even though it only returns snippets.
+- An LLM is asked to cite sources it never actually opened.
+- Reranking happens after the answer instead of before evidence selection.
+- Failed page reads silently become empty context.
+
+The fix is to define a narrow job for every layer.
+
+```text
+Search provider -> candidate URLs
+Crawler / reader -> page content
+Reranker -> selected evidence
+Chunk builder -> source chunks
+Citation builder -> traceable answer support
+LLM -> final synthesis
+```
+
+<Info>
+The boundary is not academic. It directly controls whether a research agent can explain why it trusted a source and where an answer came from.
+</Info>
+
+## Who This Is For
+
+This is for anyone building search, RAG, Deep Research, or Perplexity-like flows in LangFlow. It assumes you already have a search provider or crawler and want the pipeline to become reliable enough for cited answers.
+
+It is also useful when choosing between SearXNG, Firecrawl, Exa, Onyx-style crawler logic, Playwright, or a custom reader.
+
+## Prerequisites
+
+- A LangFlow or similar orchestration layer.
+- At least one search provider.
+- At least one content reader or crawler.
+- A place to store source metadata and chunks.
+- An LLM that answers from labeled context.
+- Optional reranker or embedding model.
+
+<Warning>
+Do not put real private domains, API keys, project IDs, or source URLs from private work into public examples. Use public docs domains or `example.com`.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Make search responsible only for discovery">
+    A search provider answers this question:
+
+    ```text
+    Which URLs might be relevant?
+    ```
+
+    The normalized output should look like:
+
+    ```json
+    {
+      "title": "Example Docs",
+      "url": "https://docs.example.com/page",
+      "snippet": "A short search result snippet.",
+      "provider": "searxng",
+      "rank": 1,
+      "published_date": null
+    }
+    ```
+
+    Search snippets are not enough for final citations. They are hints for which pages to open.
+  </Step>
+
+  <Step title="Apply filters before opening pages">
+    Domain allowlists, denylists, recency filters, language filters, and location filters should shape the candidate set before crawler work starts.
+
+    Example filter object:
+
+    ```json
+    {
+      "domain_allowlist": [
+        "docs.example.com",
+        "github.com"
+      ],
+      "domain_denylist": [
+        "pinterest.com",
+        "low-quality-example.com"
+      ],
+      "recency": "year",
+      "language": ["en"],
+      "max_results": 8
+    }
+    ```
+
+    This prevents the crawler from spending time on pages the system already knows it should not trust.
+  </Step>
+
+  <Step title="Use reranking before crawling deeply">
+    Search rank is useful but not final. Before opening many pages, deduplicate and score candidate URLs.
+
+    A simple first-pass scoring model:
+
+    ```text
+    score =
+      provider_rank_score
+      + official_docs_bonus
+      + github_bonus
+      + freshness_bonus
+      - deny_domain_penalty
+      - duplicate_penalty
+    ```
+
+    Open a small diverse set of URLs instead of every result.
+  </Step>
+
+  <Step title="Make the crawler responsible for reading URLs">
+    A crawler answers this question:
+
+    ```text
+    What does this URL actually say?
+    ```
+
+    A useful reader output:
+
+    ```json
+    {
+      "url": "https://docs.example.com/page",
+      "title": "Example Docs",
+      "text": "Clean readable page text...",
+      "content_type": "text/html",
+      "scrape_successful": true,
+      "failure_reason": null
+    }
+    ```
+
+    If a page fails, preserve the failure reason. Do not feed empty or challenge-page text into the LLM.
+  </Step>
+
+  <Step title="Handle HTML, PDF, and JavaScript pages separately">
+    Different page types need different readers:
+
+    - HTML can usually use HTTP fetch plus cleanup.
+    - PDF needs PDF text extraction and metadata handling.
+    - JavaScript-heavy pages may need Playwright fallback.
+    - Bot-challenge pages should usually be marked as failed, not treated as evidence.
+
+    This keeps extraction quality visible.
+  </Step>
+
+  <Step title="Convert content into source chunks">
+    The answer model should not receive an unstructured blob of pages. Convert content into chunks with source IDs:
+
+    ```json
+    {
+      "source_id": 1,
+      "chunk_id": "1.1",
+      "title": "Example Docs",
+      "url": "https://docs.example.com/page",
+      "text": "The chunk of evidence that supports a claim."
+    }
+    ```
+
+    Stable chunk IDs are the bridge between evidence and citations.
+  </Step>
+
+  <Step title="Make citations a validator, not decoration">
+    Citations should be checked after generation. The formatter should detect:
+
+    - Known chunk citations, such as `[1.1]`.
+    - Unknown citations, such as `[9.4]` when no source 9 exists.
+    - Raw URLs that were never opened.
+    - Claims that have no nearby citation.
+
+    This makes the system stricter than a normal chatbot with links at the bottom.
+  </Step>
+</Steps>
+
+## Tool Roles
+
+| Tool or Layer | Best Use | Do Not Use It For |
+| --- | --- | --- |
+| SearXNG-style metasearch | Open search recall and candidate URLs | Deep page extraction or final evidence |
+| Brave / Serper / Google PSE | Search recall with provider ranking | Claim-level citation support |
+| Exa-style semantic search | Semantic discovery and content retrieval | Full replacement for all crawling needs |
+| Firecrawl-style extraction | LLM-ready page reading and crawl jobs | Search ranking unless paired with discovery |
+| Onyx-style crawler | Controlled URL reading with safety and fallback | Discovering the web from scratch |
+| Playwright | JavaScript rendering fallback | Bypassing every bot challenge |
+| Reranker | Evidence selection before answer generation | Fixing unsupported final answers after the fact |
+| Citation validator | Checking source traceability | Inventing citations |
+
+## LangFlow Node Map
+
+In LangFlow, keep the pipeline visible:
+
+```text
+User Question
+-> Search Planner
+-> Search Provider
+-> Result Normalizer
+-> Filter Engine
+-> Deduplicator
+-> Reranker
+-> URL Selector
+-> Crawler / Open URL
+-> Content Cleaner
+-> Chunk Builder
+-> Source Map
+-> Answer Prompt Builder
+-> LLM
+-> Citation Formatter
+-> JSON Output
+```
+
+If the crawler and LLM are hidden inside one component, the system becomes harder to inspect. Keep the answer node separate when you need to debug evidence quality.
+
+## Decision Rules
+
+Use these rules when designing or debugging the pipeline:
+
+- If the problem is "no good sources found," improve search or filters.
+- If the problem is "source pages are empty," improve crawler or fallback handling.
+- If the problem is "answer uses weak sources," improve reranking.
+- If the problem is "answer has no citations," improve prompt and formatter.
+- If the problem is "citations point to nonexistent sources," improve validator.
+- If the problem is "system is too slow," reduce URLs opened before reducing answer quality.
+
+## Common Failure Modes
+
+<Warning>
+Do not cite search snippets as if they are opened pages. Snippets are recall hints, not evidence.
+</Warning>
+
+<Warning>
+Do not make the crawler responsible for discovery. Without search recall, the crawler only knows how to read URLs it has already been given.
+</Warning>
+
+<Warning>
+Do not open every search result. Page reading is expensive and noisy. Rank and deduplicate first.
+</Warning>
+
+<Warning>
+Do not pass failed crawls into the LLM as empty context. Preserve `failure_reason` and skip those pages.
+</Warning>
+
+<Warning>
+Do not trust citations just because the final answer contains links. Check that each citation maps to a real source chunk.
+</Warning>
+
+## Final Checklist
+
+- [ ] Search provider returns candidate URLs with title, URL, snippet, provider, and rank.
+- [ ] Domain and recency filters run before crawling.
+- [ ] URL deduplication happens before page reading.
+- [ ] Reranker selects a small, diverse set of URLs.
+- [ ] Crawler returns `scrape_successful` and `failure_reason`.
+- [ ] HTML, PDF, and JavaScript fallback paths are handled separately.
+- [ ] Source chunks have stable IDs.
+- [ ] Final answer cites known chunks.
+- [ ] Citation formatter reports invalid citations.
+- [ ] Failed pages are visible in diagnostics.
+
+## What To Remember
+
+The durable rule is:
+
+```text
+search finds URLs
+crawler reads URLs
+reranker chooses evidence
+chunk builder creates citeable units
+LLM writes from evidence
+validator checks citations
+```
+
+Keeping those boundaries clean is what turns a web-connected chatbot into a debuggable research system.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">search</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">crawler</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">rag</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200">citations</span>
+    </div>
+    **Related:** [[Recreate Perplexity Search With LangFlow]], [[Deep Research Is An Orchestration Loop]], [[LangFlow Debugging Playbook]]
+  </Card>
+</div>
