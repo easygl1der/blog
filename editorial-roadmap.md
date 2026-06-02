@@ -154,7 +154,7 @@ Keep as pillars or case studies:
 - `2026-06-02-how-to-recreate-perplexity-computer-in-langflow` as a Computer-like runtime case study
 - `2026-06-02-browseros-mcp` as a browser automation case study
 
-Archived raw material hidden from public navigation:
+Visible archive material:
 
 - `2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow`
 - `2026-05-31-using-the-perplexity-like-langflow-search-flows`
@@ -162,7 +162,7 @@ Archived raw material hidden from public navigation:
 - `2026-05-31-operate-langflow-flows-through-api-and-mcp`
 - `2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows`
 
-These May notes are kept in the repository as source material, but they should not be visible in public navigation. The June notes are the cleaner public-facing versions. Avoid adding more Perplexity or LangFlow API notes unless they introduce a genuinely new system boundary.
+These May notes are visible under `May Archive` so older work can still be found and referenced. Treat them as raw historical material, not the canonical public-facing versions. The June notes remain the cleaner theme-organized articles. Avoid adding more Perplexity or LangFlow API notes unless they introduce a genuinely new system boundary.
 
 LangFlow API/MCP overlap status:
 

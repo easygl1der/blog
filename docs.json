@@ -16,6 +16,16 @@
             "group": "2026",
             "pages": [
               {
+                "group": "May Archive",
+                "pages": [
+                  "docs/notes/2026/05/2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis",
+                  "docs/notes/2026/05/2026-05-31-operate-langflow-flows-through-api-and-mcp",
+                  "docs/notes/2026/05/2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow",
+                  "docs/notes/2026/05/2026-05-31-using-the-perplexity-like-langflow-search-flows",
+                  "docs/notes/2026/05/2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows"
+                ]
+              },
+              {
                 "group": "June",
                 "pages": [
                   {
