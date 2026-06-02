@@ -1,0 +1,342 @@
+---
+title: "LangFlow Debugging Playbook"
+description: "A practical troubleshooting guide for LangFlow servers, APIs, flows, build streams, MCP bridges, and long-running custom components."
+date: "2026-06-02"
+type: "guide"
+tags: [langflow, debugging, mcp, api, workflow]
+status: "published"
+---
+
+# LangFlow Debugging Playbook
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">10 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Debug LangFlow by checking the server, browser, API, flow graph, build events, custom components, and MCP bridge in the right order.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">debugging</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">api</span>
+  </div>
+</div>
+
+## Summary
+
+This playbook collects the recurring LangFlow debugging patterns from local development, remote VPS deployment, MCP automation, and long-running custom components. The key habit is to debug in layers: server health first, browser session second, API auth third, flow graph fourth, build event stream fifth, and custom component internals last.
+
+It avoids real domains, API keys, flow IDs, and project IDs. Use variables such as `$LANGFLOW_BASE_URL`, `$LANGFLOW_API_KEY`, `$FLOW_ID`, and `$PROJECT_ID` when adapting the commands.
+
+---
+
+## What This Solves
+
+LangFlow failures often look like a generic red box in the browser, but the root cause can be completely different:
+
+- The server is not reachable.
+- The browser session is stale.
+- Two LangFlow servers are using the same SQLite database.
+- The API key is missing or wrong.
+- The flow graph has an expensive Agent or tool branch connected by accident.
+- A build job is hanging on a long-running component.
+- An MCP bridge points to the wrong project endpoint.
+- A custom component is failing internally but only returning a short UI error.
+
+This note gives a repeatable order for narrowing the problem.
+
+## Who This Is For
+
+This is for anyone operating LangFlow from both the browser and an AI coding agent. It assumes you can run terminal commands, call LangFlow APIs with `curl`, inspect JSON with `jq`, and understand the basic shape of a LangFlow flow.
+
+It is especially useful when Codex, MCP tools, or REST calls are editing flows in parallel with manual browser work.
+
+## Prerequisites
+
+- LangFlow reachable at `$LANGFLOW_BASE_URL`.
+- A LangFlow API key stored in `$LANGFLOW_API_KEY`.
+- A known flow ID stored in `$FLOW_ID`.
+- Optional project ID stored in `$PROJECT_ID`.
+- `curl`, `jq`, and `lsof` available locally or on the server.
+- Access to the browser session where the LangFlow UI is open.
+
+Example setup:
+
+```bash
+export LANGFLOW_BASE_URL="http://localhost:7860"
+export LANGFLOW_API_KEY="set-this-in-your-shell"
+export FLOW_ID="replace-with-flow-id"
+export PROJECT_ID="replace-with-project-id"
+```
+
+<Warning>
+Never paste a real API key, private domain, project ID, flow ID, or local filesystem path into a public debugging note.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Start with server health">
+    Check whether the server responds before debugging the browser or flow graph:
+
+    ```bash
+    curl -fsS "$LANGFLOW_BASE_URL/health_check"
+    ```
+
+    A healthy local instance commonly returns JSON like:
+
+    ```json
+    {"status":"ok","chat":"ok","db":"ok"}
+    ```
+
+    If this fails, stop. The issue is server reachability, port binding, reverse proxy, DNS, firewall, or process state.
+  </Step>
+
+  <Step title="Check duplicate local servers">
+    If you run LangFlow locally, confirm there is only one intended process listening:
+
+    ```bash
+    for port in 7860 7861 7863 7865; do
+      lsof -nP -iTCP:$port -sTCP:LISTEN
+    done
+    ```
+
+    Multiple LangFlow processes can fight over the same local SQLite database and cause `sqlite3.OperationalError: database is locked`.
+  </Step>
+
+  <Step title="Separate browser problems from API problems">
+    If the API works but the browser shows `misc.fetchErrorMessage`, `misc.fetchErrorDescription`, or a stale red UI state, verify the API separately:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      | jq 'length'
+    ```
+
+    If the API succeeds, clear site data, open a private window, or reload the direct flow URL. Do not rewrite the flow until API health is confirmed.
+  </Step>
+
+  <Step title="Verify API authentication">
+    LangFlow API calls should use the `x-api-key` header:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      | jq '{id, name}'
+    ```
+
+    Unauthorized responses usually mean the key is missing, stale, copied incorrectly, or pointed at the wrong server.
+  </Step>
+
+  <Step title="Inspect node and edge counts before editing">
+    Fetch the flow and inspect its graph shape:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/$FLOW_ID" \
+      -o /tmp/langflow-flow.json
+
+    jq '{
+      name,
+      nodes: (.data.nodes | length),
+      edges: (.data.edges | length)
+    }' /tmp/langflow-flow.json
+    ```
+
+    A sudden edge-count change is often more useful than a vague UI error.
+  </Step>
+
+  <Step title="Check expensive Agent or tool branches">
+    A common failure is accidentally connecting a heavy Agent branch or `Run Flow` tool path into the default route.
+
+    Use a local variable for the component ID you want to inspect:
+
+    ```bash
+    export COMPONENT_ID="replace-with-component-id"
+
+    jq --arg id "$COMPONENT_ID" '
+      .data.edges
+      | map(select(.source == $id or .target == $id))
+      | length
+    ' /tmp/langflow-flow.json
+    ```
+
+    If the default route should not use that component, the count should be `0`.
+  </Step>
+
+  <Step title="Use build jobs to isolate failing components">
+    Full flow runs can hide the failing node. Build only up to a known component:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -H "Content-Type: application/json" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$FLOW_ID/flow?stop_component_id=ComponentIdHere" \
+      -d '{"inputs":{"input_value":"test input"},"tweaks":{}}' \
+      | jq
+    ```
+
+    The build endpoint returns a job ID. Stream events:
+
+    ```bash
+    export JOB_ID="replace-with-job-id"
+
+    curl --compressed -sS -N \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/build/$JOB_ID/events"
+    ```
+
+    Use the event stream to identify the first component that fails or hangs.
+  </Step>
+
+  <Step title="Cancel stuck build jobs">
+    If a build job is clearly stuck, cancel it:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      -X POST \
+      "$LANGFLOW_BASE_URL/api/v1/build/$JOB_ID/cancel"
+    ```
+
+    Then rerun with a smaller `stop_component_id`.
+  </Step>
+
+  <Step title="Validate MCP project endpoints">
+    A LangFlow MCP project endpoint has this shape:
+
+    ```text
+    /api/v1/mcp/project/{project_id}/streamable
+    ```
+
+    Check metadata first:
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$PROJECT_ID" \
+      | jq
+    ```
+
+    Then bridge it:
+
+    ```bash
+    uvx mcp-proxy \
+      --transport streamablehttp \
+      "$LANGFLOW_BASE_URL/api/v1/mcp/project/$PROJECT_ID/streamable"
+    ```
+  </Step>
+
+  <Step title="Debug custom components with artifacts">
+    For long custom components, return structured state instead of only prose. Useful fields include:
+
+    ```json
+    {
+      "stage": "compile",
+      "ok": false,
+      "error": "compile failed",
+      "artifact_paths": [],
+      "diagnostics": [],
+      "attempts": []
+    }
+    ```
+
+    A component that saves logs, intermediate JSON, and output files is much easier to debug than one that only emits a red UI box.
+  </Step>
+</Steps>
+
+## Debugging Order
+
+Use this order before changing the flow:
+
+```text
+health_check
+-> process and port state
+-> browser session
+-> API key
+-> flow fetch
+-> node and edge counts
+-> branch connectivity
+-> stopped build
+-> build event stream
+-> custom component artifacts
+-> MCP bridge
+```
+
+This order avoids editing the flow graph when the problem is actually server reachability, browser state, or authentication.
+
+## Common Failure Modes
+
+<Warning>
+If `sqlite3.OperationalError: database is locked` appears, check for duplicate LangFlow processes using the same SQLite database. Keep only one intended local server running.
+</Warning>
+
+<Warning>
+If the browser shows `misc.fetchErrorMessage` but API calls work, the frontend session may be stale. Clear site data or open a fresh private window before changing the flow.
+</Warning>
+
+<Warning>
+If red boxes show a generic error such as `OSError Details: 5`, inspect the build event stream. The first failing component is more useful than the final browser message.
+</Warning>
+
+<Warning>
+If build events hang, the flow may be waiting on a model call, a tool branch, a nested `Run Flow`, or a long custom component. Use `stop_component_id` to narrow the path.
+</Warning>
+
+<Warning>
+If MCP tools do not appear, check the project endpoint, `mcp-proxy` command, transport type, and project ID. MCP cannot fix a wrong LangFlow base URL.
+</Warning>
+
+<Warning>
+If a custom component fails without useful diagnostics, change the component to save intermediate artifacts and return a structured status object.
+</Warning>
+
+<Tip>
+For long workflows, prefer stopped builds and small test inputs. They are faster and safer than repeatedly running the entire flow.
+</Tip>
+
+## Final Checklist
+
+- [ ] `curl "$LANGFLOW_BASE_URL/health_check"` succeeds.
+- [ ] Only the intended LangFlow port is listening.
+- [ ] API calls work with `x-api-key`.
+- [ ] Browser errors are reproduced or cleared separately from API errors.
+- [ ] The flow can be fetched and inspected as JSON.
+- [ ] Node and edge counts are known before editing.
+- [ ] Expensive Agent or tool branches are disconnected unless explicitly needed.
+- [ ] Failing components are isolated with `stop_component_id`.
+- [ ] Build event streams identify the first failure or hang.
+- [ ] MCP project endpoint metadata is reachable before using `mcp-proxy`.
+- [ ] Custom components emit structured status and save artifacts.
+
+## What To Remember
+
+LangFlow debugging is a layering problem. Do not start by rewriting the canvas. First prove the server is healthy, the browser is not stale, the API key works, and the flow JSON is fetchable. Then inspect graph structure, isolate components with build jobs, and only then change component code or flow edges.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    **Type:** guide
+    **Status:** published
+    **Date:** 2026-06-02
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">debugging</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">api</span>
+    </div>
+    **Related:** [[Deploy LangFlow On A VPS And Build Flows Through MCP]], [[Generate A Whole Book With LangFlow]], [[Recreate Perplexity Search With LangFlow]]
+  </Card>
+</div>
