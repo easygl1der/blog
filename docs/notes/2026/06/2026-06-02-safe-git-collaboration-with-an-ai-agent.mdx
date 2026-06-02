@@ -1,0 +1,311 @@
+---
+title: "Safe Git Collaboration With An AI Agent"
+description: "A practical guide to working with Codex in a dirty Git repository without overwriting user changes, committing unrelated files, or deploying the wrong snapshot."
+date: "2026-06-02"
+type: "guide"
+tags: [codex, git, workflow, collaboration, safety]
+status: "published"
+---
+
+# Safe Git Collaboration With An AI Agent
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">10 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Treat Git state as shared state: inspect first, change narrowly, never erase unknown work, and deploy only the snapshot you intend.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">git</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">collaboration</span>
+  </div>
+</div>
+
+## Summary
+
+AI agents are useful in Git repositories because they can read files, make edits, run tests, commit, push, and deploy. That same power can damage a project if the agent treats the working tree as disposable. The safe pattern is to inspect state before acting, separate user changes from agent changes, use narrow staging, avoid destructive commands unless explicitly approved, and verify both the commit and the deployed artifact.
+
+This note is the Git safety layer for [[codex-goal]] and [[takenotes]]. `/goal` explains how to run long tasks; takenotes explains how to turn work into posts. This note explains how not to lose or miscommit work while doing that.
+
+---
+
+## What This Solves
+
+Long Codex sessions often happen in a shared working tree:
+
+- The user has local edits from another task.
+- Mintlify or another tool auto-formats files after validation.
+- A publishing script updates navigation.
+- A deployment command reads the current directory, not just the last commit.
+- The agent wants to "clean up" state before continuing.
+
+Without rules, the agent can accidentally:
+
+- commit unrelated user changes;
+- deploy uncommitted files;
+- overwrite work it did not create;
+- hide a real problem with `git reset` or `git clean`;
+- remove ignored or untracked files that belonged to another task;
+- report that production is updated when only a preview build succeeded.
+
+The working rule is simple:
+
+```text
+inspect -> isolate -> edit -> validate -> stage narrowly -> commit -> push -> deploy intended snapshot -> verify URL
+```
+
+<Warning>
+Never treat a dirty worktree as permission to erase state. A dirty worktree is information to inspect.
+</Warning>
+
+## Who This Is For
+
+This is for anyone letting Codex or another coding agent modify a real repository, especially when the task includes writing blog notes, deploying to Vercel, editing LangFlow-related files, or running long `/goal` sessions.
+
+It assumes you know basic Git commands, but want a reliable collaboration protocol between a human and an agent.
+
+## Prerequisites
+
+- A Git repository with a remote branch.
+- Codex or another agent with terminal access.
+- A task boundary clear enough to identify which files should change.
+- Local validation commands, such as tests, `git diff --check`, or Mintlify checks.
+- A rule that destructive Git commands require explicit user approval.
+
+<Info>
+Destructive commands include `git reset`, `git checkout --`, `git restore`, `git clean`, changing ignore rules, and deleting files. These can discard work the agent did not create.
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="Start every session by inspecting Git state">
+    Before editing, run:
+
+    ```bash
+    git status --short --branch
+    git diff --stat
+    git log -3 --oneline
+    ```
+
+    This answers three questions:
+
+    - Is the branch ahead, behind, or synced?
+    - Which files are already modified?
+    - What was the latest committed context?
+
+    If there are existing changes, assume they may belong to the user or another tool until proven otherwise.
+  </Step>
+
+  <Step title="Classify changes before touching them">
+    Separate files into buckets:
+
+    | Bucket | Meaning | Action |
+    | --- | --- | --- |
+    | Target changes | Files required for the current task | Read, edit, stage |
+    | Related generated changes | Tool output caused by this task | Inspect before staging |
+    | Unrelated user changes | Existing or unexpected work | Leave untouched |
+    | Dangerous state | Deleted files, ignore changes, mass rewrites | Stop and ask |
+
+    The key is not whether a change looks useful. The key is whether it belongs to this task.
+  </Step>
+
+  <Step title="Edit narrowly">
+    Make the smallest set of edits that satisfies the task. In a blog workflow, this often means:
+
+    ```text
+    one note file
+    + docs.json only if navigation changed
+    + images only if the article actually references them
+    ```
+
+    Do not improve surrounding files opportunistically unless they are required for the current article's quality or safety.
+  </Step>
+
+  <Step title="Use validation before staging">
+    Run task-specific checks before committing:
+
+    ```bash
+    git diff --check
+    git status --short
+    ```
+
+    For Mintlify notes:
+
+    ```bash
+    python "$TAKENOTES_SKILL_DIR/scripts/strict_mintlify_check.py" \
+      --config-dir "$BLOG_ROOT"
+    ```
+
+    For privacy:
+
+    ```bash
+    rg -n -f privacy-patterns.txt docs/notes
+    ```
+
+    If a validator changes files, inspect the new diff before deciding whether those generated changes belong in the commit.
+  </Step>
+
+  <Step title="Stage explicit files, not everything">
+    Avoid `git add .` during agent work unless the task truly owns the entire diff.
+
+    Prefer:
+
+    ```bash
+    git add docs/notes/2026/06/2026-06-02-example-note.mdx
+    git add docs.json
+    ```
+
+    Then check the staged diff:
+
+    ```bash
+    git diff --cached --stat
+    git diff --cached --name-only
+    ```
+
+    A clean staging area is the last defense against unrelated commits.
+  </Step>
+
+  <Step title="Commit with a precise message">
+    Good commit messages make later auditing easier:
+
+    ```bash
+    git commit -m 'notes: refresh takenotes publishing workflow'
+    git commit -m 'notes: sanitize legacy private identifiers'
+    git commit -m 'notes: add guide "Safe Git Collaboration With An AI Agent" (2026-06-02)'
+    ```
+
+    The message should say whether this is a new note, a refresh, a safety cleanup, or a formatting normalization.
+  </Step>
+
+  <Step title="Deploy the intended snapshot">
+    Deployment tools often read the current directory, including uncommitted files. That can make a preview show changes that are not in Git.
+
+    If the main worktree has unrelated uncommitted changes, deploy a clean snapshot:
+
+    ```bash
+    git worktree add /tmp/blog-preview-$COMMIT_SHA $COMMIT_SHA
+    npx --yes vercel deploy /tmp/blog-preview-$COMMIT_SHA -y
+    ```
+
+    This proves the committed snapshot builds, not just whatever happens to be in the current directory.
+  </Step>
+
+  <Step title="Verify preview and production separately">
+    Preview and production are different evidence.
+
+    ```bash
+    curl -I -L --max-time 30 \
+      https://blog.example.com/docs/notes/2026/06/2026-06-02-example-note
+    ```
+
+    A Vercel preview `READY` proves one deployment succeeded. A production `HTTP/2 200` on the public domain proves the public site currently serves the page.
+  </Step>
+</Steps>
+
+## Destructive Command Policy
+
+Use this table when deciding whether the agent can proceed autonomously:
+
+| Command Or Action | Risk | Policy |
+| --- | --- | --- |
+| `git status`, `git diff`, `git log` | Read-only | Safe |
+| `git add specific-file` | Stages known work | Safe after inspection |
+| `git commit` | Records staged work | Safe if staged diff is checked |
+| `git push` | Publishes commits | Safe if commit is intended |
+| `git reset` | Can discard or rewrite state | Ask first |
+| `git checkout -- file` | Can discard changes | Ask first |
+| `git restore` | Can discard changes | Ask first |
+| `git clean` | Can delete untracked files | Ask first |
+| deleting files | Can remove user work | Ask first |
+| changing `.gitignore` | Can hide future changes | Ask first |
+
+<Tip>
+If the agent needs a clean environment, create a clean worktree or temporary copy instead of cleaning the user's current worktree.
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+**Committing unrelated files.** This usually happens after `git add .`. Use explicit paths and inspect `git diff --cached --name-only`.
+</Warning>
+
+<Warning>
+**Deploying uncommitted changes.** Vercel and similar tools may read the working directory. If the worktree is dirty, deploy from a clean worktree pinned to the intended commit.
+</Warning>
+
+<Warning>
+**Using destructive commands to fix confusion.** If the agent is confused by local state, the right next step is inspection, not reset or deletion.
+</Warning>
+
+<Warning>
+**Ignoring generated diffs.** Validation tools can rewrite files. Treat generated diffs like any other change: inspect, classify, and stage only if they belong to the task.
+</Warning>
+
+<Warning>
+**Reporting success too early.** A commit hash, a preview URL, and a production `HTTP/2 200` prove different things. Say exactly which one was verified.
+</Warning>
+
+## Final Checklist
+
+- [ ] `git status --short --branch` was checked before editing.
+- [ ] Existing changes were classified as target, related generated, unrelated, or dangerous.
+- [ ] No destructive Git or file deletion command was used without explicit approval.
+- [ ] The diff only contains files that belong to the task.
+- [ ] `git diff --check` passed.
+- [ ] Privacy or secret scans passed when publishing public notes.
+- [ ] Staged files were inspected with `git diff --cached --name-only`.
+- [ ] Commit message describes the actual change.
+- [ ] Push succeeded.
+- [ ] Preview deployment was built from the intended snapshot.
+- [ ] Production URL was checked when public publication mattered.
+- [ ] Final summary mentioned any remaining unrelated worktree state.
+
+## What To Remember
+
+Safe Git collaboration with an AI agent is mostly about respecting ownership. The agent can be fast, but it must not assume every file in the worktree belongs to the current task. Inspect first, stage narrowly, avoid destructive cleanup, and verify the exact snapshot that users will see.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">git</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">collaboration</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">safety</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">codex goal</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">takenotes publishing workflow</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">vercel deployment</span>
+      </div>
+    </div>
+  </Card>
+</div>
