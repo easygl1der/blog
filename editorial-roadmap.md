@@ -16,6 +16,7 @@ The blog should not become a pile of small tutorials. New notes should either be
 4. Public notes must use example domains, variables, and public-safe IDs.
 5. Each note must answer one core question.
 6. Every note should contain a reproducible workflow, common failure modes, and a final checklist.
+7. Never publish raw capture directly. Every note needs one editorial pass for focus and overlap, then one technical pass for privacy, commands, links, validation, commit, push, and deployment status.
 
 ## Quality Bar
 
@@ -48,6 +49,8 @@ Use this checklist before publishing each note:
 - [ ] Repeated material is linked, not copied.
 - [ ] Failure modes are specific enough to debug from.
 - [ ] Final checklist proves the reader reached the goal.
+- [ ] The draft has had an editorial pass for structure, density, and duplicate material.
+- [ ] The draft has had a technical pass for commands, examples, links, and observable validation.
 - [ ] Mintlify validation passes.
 - [ ] `git diff --check` passes.
 
@@ -147,11 +150,9 @@ These May notes contain useful raw material, but the June notes should become th
 1. Expand and polish `Generate a Whole Book With LangFlow`.
 2. Create or refresh `LangFlow Debugging Playbook`.
 3. Merge Perplexity overlap into `Recreate Perplexity Search With LangFlow`.
-4. Create `Crawler Reads URLs, Search Finds URLs`.
-5. Create `Source Maps, Chunk Citations, And Citation Validation`.
-6. Refresh `Cloudflare DNS And HTTPS For Personal Services`.
-7. Refresh `Use Takenotes To Turn Debugging Into Blog Posts`.
-8. Create `Safe Git Collaboration With An AI Agent`.
+4. Refresh `Operate LangFlow Flows Through API And MCP`.
+5. Audit the May Perplexity notes and fold any remaining unique material into the June Perplexity pillar.
+6. Create `LangFlow Debugging Playbook` only after the API/MCP overlap is resolved.
 
 ## Immediate Quality Pass
 
