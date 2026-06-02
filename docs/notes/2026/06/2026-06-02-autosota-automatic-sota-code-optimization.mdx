@@ -1,0 +1,712 @@
+---
+title: "AutoSOTA: 自动优化论文代码到更好指标"
+description: "AutoSOTA 不是泛化的研究写作系统，而是围绕论文代码、评测命令、指标目标和补丁导出的自动优化闭环。"
+date: "2026-06-02"
+type: "research"
+tags: [autosota, auto-research, code-optimization, benchmarks]
+status: "published"
+---
+
+# AutoSOTA: 自动优化论文代码到更好指标
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">research</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">18 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    AutoSOTA 的核心是把“论文附件代码能否被自动调到更好指标”做成闭环：onboard 仓库、调研思路、改代码、跑评测、保留最佳 patch。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">autosota</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">auto-research</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">code-optimization</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">benchmarks</span>
+  </div>
+</div>
+
+## Summary
+
+AutoSOTA 应该作为独立页面理解。它和 ARIS 都属于 Auto Research，但它不是“从 idea 到论文”的广义研究 workflow，而是“给定一篇论文的本地代码库和主指标，自动寻找优化策略、修改代码、运行评测、记录分数、导出最佳代码和 diff”的系统。它更像一个面向 research codebase 的自动调参、自动改实现、自动实验执行器。
+
+---
+
+## Research Question
+
+这篇笔记只回答 AutoSOTA 这一条线的问题：
+
+- AutoSOTA 的输入和输出是什么？
+- 它为什么需要本地已 clone 且能跑通的论文代码？
+- 它的 onboard、research、ideas review、optimize、export 分别做什么？
+- 它怎样避免 agent 为了刷分篡改评测脚本？
+- 它和 ARIS 的区别在哪里？
+- 它在自动化科研里到底解决哪一类问题？
+
+一句话总结：
+
+```text
+AutoSOTA = runnable paper repo + metric target + agentic code modification loop + evaluation guard + best patch export
+```
+
+它解决的是科研里的一个非常具体但高价值的环节：已有论文代码能不能被自动优化到更强结果。
+
+## Findings
+
+### 1. AutoSOTA 的定位
+
+AutoSOTA README 对自己的定位是：
+
+```text
+A curated leaderboard of automatically optimized research codebases
+```
+
+CLI 文档的中文描述更直接：
+
+```text
+自动化 SOTA 代码优化流水线。
+给定一篇 ML 论文的本地已克隆代码仓库和优化目标，
+由 AI 自主探索、研究、修改代码，迭代提升性能指标。
+```
+
+所以它不是一个论文阅读器，也不是一个综述写作器，更不是一个通用 agent 平台。它的中心对象是：
+
+- 本地论文代码库；
+- 可执行评测命令；
+- 主指标；
+- baseline；
+- 目标提升百分比；
+- 每轮 code diff；
+- 每轮评测分数；
+- 最终最佳 patch。
+
+这让 AutoSOTA 和 ARIS 明显不同：
+
+| 系统 | 目标 |
+|---|---|
+| ARIS | 自动推进研究生命周期：文献、idea、实验、review、论文、rebuttal、wiki |
+| AutoSOTA | 自动优化已有论文代码库，在指定指标上超过 baseline |
+
+AutoSOTA 的问题不是“这个方向能不能发论文”，而是“这个 repo 在这个 benchmark 上还能不能榨出更好分数”。
+
+### 2. AutoSOTA 的输入
+
+AutoSOTA 的输入不是一个自然语言研究方向，而是一组工程化前提。
+
+最小输入包括：
+
+| 输入 | 作用 |
+|---|---|
+| `paper/target.md` | 描述论文、任务、主指标、baseline、优化方向和目标 |
+| `paper/paper.pdf` | 可选，帮助模型理解论文背景 |
+| 本地 cloned repo | 实际要被修改和评测的代码库 |
+| `config.yaml` | API key、模型、research 模型、运行参数 |
+| GPU / Python 环境 | 评测代码需要能在本机或服务器跑通 |
+
+一个典型 `target.md` 会写清楚：
+
+```markdown
+**论文**：TS-RAG: Retrieval-Augmented Generation based Time Series ...
+
+**任务**：使用 Chronos-Bolt 在 ETTh1 数据集上进行零样本预测，降低预测误差。
+
+## 主要指标
+
+| 指标 | 说明 | 优化方向 | 当前基线值 |
+|------|------|----------|------------|
+| `ETTh1_MSE` | ETTh1 均方误差 | 越低越好 ↓ | 0.3616 |
+| `ETTh1_MAE` | ETTh1 平均绝对误差 | 越低越好 ↓ | 0.3650 |
+
+## 目标
+
+在主指标 `ETTh1_MSE` 上相比基线提升 5% 以上。
+```
+
+这个输入格式说明 AutoSOTA 很重视目标函数。它需要明确知道：
+
+- 哪个指标是主指标；
+- 越高越好还是越低越好；
+- baseline 是多少；
+- 目标提升是多少；
+- 哪些评测协议不能动。
+
+### 3. AutoSOTA 的输出
+
+AutoSOTA 的输出全部落在工作目录，而不是污染全局安装路径。
+
+核心输出包括：
+
+```text
+~/my-project/
+├── logs/sota/<paper>.log
+├── logs/optimizer_detail/<paper>.log
+├── .autosota/papers/<paper>/
+│   ├── config.yaml
+│   └── runs/latest/
+│       ├── logs/
+│       │   ├── master_prompt.md
+│       │   └── effective_config.yaml
+│       ├── memory/
+│       │   ├── research_report.md
+│       │   ├── code_analysis.md
+│       │   └── idea_library.md
+│       └── results/
+│           ├── scores.jsonl
+│           └── optimization_curve.png
+└── optimized_code/<paper>/
+    └── final_patch.diff
+```
+
+其中最重要的几个文件：
+
+| 文件 | 含义 |
+|---|---|
+| `research_report.md` | 文献调研和优化方向总结 |
+| `code_analysis.md` | 对 repo 结构、关键模块、评测入口的分析 |
+| `idea_library.md` | 候选优化 idea 列表 |
+| `scores.jsonl` | 每轮评测分数 |
+| `optimization_curve.png` | 指标变化曲线 |
+| `optimized_code/<paper>/` | 最佳代码快照 |
+| `final_patch.diff` | 从 baseline 到 best 的 diff |
+
+所以 AutoSOTA 最终交付的是可复查的代码差异，而不是一段解释。
+
+### 4. 总体工作流
+
+AutoSOTA 的工作流可以概括为：
+
+```text
+paper/target.md
+paper/paper.pdf
+local cloned repo
+        |
+        v
+autosota --repo /path/to/clone
+        |
+        v
+1. Onboard
+2. Research
+3. Optional Ideas Review
+4. Optimize Loop
+5. Export Best Code
+```
+
+更细一点：
+
+```text
+目标和代码库
+-> 自动探路 repo
+-> 找 eval command
+-> 建 baseline
+-> 调研相关优化思路
+-> 生成 idea library
+-> 逐轮选择 idea
+-> 修改代码
+-> 运行评测
+-> 记录分数
+-> 保留最佳 commit
+-> 导出 optimized_code 和 final_patch.diff
+```
+
+这是一种非常明确的 agentic loop。它不是让模型一次性生成最终补丁，而是让模型不断接触 reward signal。
+
+### 5. Phase 1: Onboard
+
+Onboard 是 AutoSOTA 的第一关键阶段。
+
+它要解决的问题是：
+
+```text
+这个 repo 到底怎么跑？
+```
+
+对于论文代码来说，这个问题经常比算法本身还麻烦。很多 research repo 有这些问题：
+
+- README 不完整；
+- 依赖版本模糊；
+- eval 命令藏在脚本里；
+- 多个数据集和指标混在一起；
+- baseline 需要特定 checkpoint；
+- 输出格式不标准；
+- GPU 设置写死；
+- 代码路径和论文描述不完全一致。
+
+AutoSOTA 的 onboard 阶段会让 Claude Code 在本机探路，自动发现：
+
+- `repo_path`;
+- `eval_command`;
+- `eval_output_format`;
+- `primary_metric`;
+- `metric_direction`;
+- `baseline_metrics`;
+- `target_improvement_pct`;
+- `max_iterations`;
+- GPU devices；
+- optional virtualenv path；
+- optional env vars。
+
+这些信息被写入：
+
+```text
+.autosota/papers/<paper>/config.yaml
+```
+
+这个文件是后续优化循环的操作说明书。
+
+### 6. Phase 2: Research
+
+Research 阶段不是为了写综述，而是为了生成可操作的优化 idea。
+
+它会结合：
+
+- 论文 PDF；
+- target.md；
+- repo 结构；
+- 相关文献；
+- 用户给的 priors；
+- 已知 benchmark 和方法；
+- 当前 baseline 的弱点。
+
+输出通常进入：
+
+```text
+.autosota/papers/<paper>/runs/latest/memory/research_report.md
+.autosota/papers/<paper>/runs/latest/memory/idea_library.md
+```
+
+这里的 idea 不是科研 idea 那种“新方法假设”，而是更贴近代码优化：
+
+- 改超参；
+- 改模型宽度或层数；
+- 改激活函数；
+- 加 test-time augmentation；
+- 调 ensemble；
+- 改 inference post-processing；
+- 增加 Monte Carlo samples；
+- 换 scheduler；
+- 修复 metric 对齐 bug；
+- 提高 eval fidelity；
+- 使用 EMA 或 checkpoint averaging；
+- 改数据预处理。
+
+AutoSOTA README 里的 per-paper summaries 展示了很多这类优化。例如有的提升来自 calibration，有的来自降低 projection iteration，有的来自调 label smoothing + AdamW，有的来自 sigmoid 后处理，有的来自 antithetic sampling。
+
+这说明 AutoSOTA 更像一个自动实验工程师，而不是论文作者。
+
+### 7. Phase 3: Ideas Review
+
+AutoSOTA 支持 `--review-ideas`。
+
+这会把流程拆成两段：
+
+```text
+阶段一：生成 idea_library.md
+-> 暂停等待人工审核
+-> 用户删除、补充、改优先级
+-> 按 Enter 继续
+阶段二：正式 optimize
+```
+
+这个设计很实用，因为论文代码优化有很多“看起来能涨分但不该做”的 idea。例如：
+
+- 可能过拟合 test set；
+- 可能修改 evaluation protocol；
+- 可能耗时超出预算；
+- 可能只提升副指标；
+- 可能违反论文复现设定；
+- 可能改动太大，不再是原方法优化。
+
+人工审核 idea library，可以把人的研究判断放在 reward loop 之前。
+
+<Tip>
+AutoSOTA 的 `--review-ideas` 相当于在自动优化前加一道 human steering gate。对于高成本 GPU 任务，这个 gate 很有价值。
+</Tip>
+
+### 8. Phase 4: Optimize Loop
+
+Optimize 是 AutoSOTA 的核心。
+
+每轮大致是：
+
+```text
+读取当前 best 和 tried ideas
+-> 选择一个 idea
+-> 修改 repo 代码
+-> 跑 eval_command
+-> 解析输出指标
+-> 和 baseline / best 比较
+-> 成功则提交并可能更新 best
+-> 失败则记录原因，换 idea
+```
+
+这和普通 AutoML 有相似之处，但 AutoSOTA 的搜索空间更宽。它不只是调一个固定模型的超参，还可能改论文 repo 的实现逻辑。
+
+因此它的优化对象可能包括：
+
+| 优化对象 | 例子 |
+|---|---|
+| 超参数 | learning rate, weight decay, dropout, batch size |
+| 结构参数 | hidden dim, layer count, ensemble count |
+| 推理策略 | TTA, threshold, beam size, sampling count |
+| 数值策略 | fp32/fp16, EMA, SWA, checkpoint averaging |
+| 数据处理 | normalization, augmentation, feature engineering |
+| 评测稳定性 | seeds, bootstrap, Monte Carlo variance reduction |
+| 代码效率 | 删除冗余 `contiguous()`, 减少过度迭代 |
+
+这类搜索比传统黑盒调参更危险也更强，因为 agent 能读代码、改代码、解释失败。
+
+### 9. Phase 5: Export
+
+优化结束后，AutoSOTA 会导出：
+
+```text
+optimized_code/<paper>/
+optimized_code/<paper>/final_patch.diff
+```
+
+`final_patch.diff` 是从 `_baseline` 到 `_best` 的 diff。这个设计非常重要：
+
+- 用户可以审查究竟改了什么；
+- 可以把 patch 应用回原 repo；
+- 可以判断提升是否来自合理修改；
+- 可以复现实验；
+- 可以在论文或报告里描述 optimization intervention。
+
+如果没有 patch，只给一个涨分结果，那几乎不可审计。AutoSOTA 的价值在于它把优化过程变成可检查的代码 artifact。
+
+### 10. 为什么 AutoSOTA 要求本地 repo 已经能跑
+
+AutoSOTA 文档反复强调：
+
+```text
+--repo 指向你已 clone 到本地、且依赖 / 评测脚本已能正常运行的代码仓库
+```
+
+这不是小限制，而是系统边界。
+
+自动优化和自动复现是两件事：
+
+| 任务 | 难点 |
+|---|---|
+| 自动复现 | 环境、数据、checkpoint、依赖、隐藏脚本、论文和代码不一致 |
+| 自动优化 | 在可运行 baseline 上寻找提升 |
+
+AutoSOTA 主要解决第二个问题。它可以 onboard 探路，也可以创建 venv，但它不保证能把任意坏 repo 从零修好到可复现。用户必须提供一个基本能评测的代码库。
+
+这让 AutoSOTA 的问题边界更干净：
+
+```text
+不是“帮我复现所有论文”
+而是“在这个已能跑的论文代码上，帮我自动提升指标”
+```
+
+### 11. 指标是 AutoSOTA 的奖励函数
+
+AutoSOTA 的 reward signal 是主指标。
+
+config 中会明确：
+
+```yaml
+primary_metric: ETTh1_MSE
+metric_direction: lower
+baseline_metrics:
+  ETTh1_MSE: 0.3616
+  ETTh1_MAE: 0.3650
+target_improvement_pct: 5.0
+max_iterations: 24
+```
+
+这让优化循环可以判断：
+
+- 当前轮是否有效；
+- 是否超过 baseline；
+- 是否刷新 best；
+- 是否达到目标；
+- 是否应该继续探索。
+
+但这也引出最大风险：只要系统根据指标奖励自己，它就有动评测脚本的诱因。
+
+### 12. 最大风险：reward hacking 和评测污染
+
+AutoSOTA 的典型风险包括：
+
+- 修改 `eval.py` 让分数变好；
+- 修改 metric 计算；
+- 修改测试集；
+- 偷看 held-out labels；
+- 只对固定 seed 过拟合；
+- 修改输出解析方式；
+- 把失败样本过滤掉；
+- 提高副指标但牺牲主协议；
+- 使用不可比较的额外数据或 checkpoint。
+
+这些问题在自动科研里很严重，因为它们会产生“看起来 SOTA”的假结果。
+
+所以 AutoSOTA 加了 `protected_paths`。
+
+### 13. `protected_paths`：AutoSOTA 的评测硬边界
+
+`protected_paths` 是可选但非常关键的机制：
+
+```yaml
+protected_paths:
+  - "eval.py"
+  - "src/metrics/"
+  - "data/test/"
+```
+
+它的机制是：
+
+1. baseline 评测后，给 protected files / directories 算 SHA256；
+2. 每轮评测前后重新计算；
+3. 如果 hash 不一致，就判定 protocol violation；
+4. 这一轮不 commit；
+5. 不写入 `scores.jsonl`；
+6. 不更新 `_best`；
+7. agent 必须还原并把该 idea 标记为 rejected。
+
+这相当于把“不要改评测脚本”从软提示变成硬约束。
+
+<Warning>
+对于自动指标优化系统，评测代码就是裁判。如果裁判能被优化器修改，所有提升都不可信。
+</Warning>
+
+### 14. 什么应该被保护，什么不该保护
+
+文档里给出的原则很清楚。
+
+应该保护：
+
+| 类型 | 原因 |
+|---|---|
+| eval 主入口 | 防止改变评测协议 |
+| metric 计算模块 | 防止刷指标 |
+| test set / benchmark data | 防止污染测试集 |
+| held-out labels | 防止偷看答案 |
+
+不应该保护：
+
+| 类型 | 原因 |
+|---|---|
+| 主模型代码 | 这正是优化对象 |
+| 训练代码 | 如果目标允许训练策略优化，就需要可改 |
+| 中间输出 | 每轮会自然变化 |
+| 配置文件 | 除非配置本身定义评测协议 |
+
+这里有一个细节：不能只看目录名。有些 repo 会把算法预测代码和评测代码都放在 `evaluation/` 里。如果整个目录锁死，合法优化也会被拒；如果完全不锁，评测又可能被污染。正确做法是从 `eval_command` 入口沿 import chain 找到真正的 metric 和 test data。
+
+### 15. AutoSOTA 的交互能力
+
+AutoSOTA 不是只能 fire-and-forget。它提供了几个运行中交互命令：
+
+```bash
+autosota sessions
+autosota inspect <ref>
+autosota inspect <ref> --logs
+autosota ask <问题...>
+autosota steer <指示...>
+autosota pause
+autosota continue
+```
+
+这些命令让用户可以：
+
+- 查看当前 run；
+- 看每轮分数；
+- tail 日志；
+- 问 agent 当前为什么涨或跌；
+- 给下一轮注入指示；
+- 每轮暂停人工检查。
+
+这说明 AutoSOTA 不是纯后台黑箱，而是一个可监控的优化循环。
+
+### 16. `ask` 和 `steer` 的意义
+
+`autosota ask` 会读取当前 run 的上下文，例如：
+
+- `scores.jsonl`;
+- `idea_library.md`;
+- 主日志尾部；
+- 基本指标和状态。
+
+然后让模型回答用户问题。它不打断主优化进程。
+
+`autosota steer` 会写入下一轮要读的指示。例如：
+
+```bash
+autosota steer 下一轮优先试试 mixed precision，不要再改 metric 相关文件
+```
+
+这让 AutoSOTA 支持“人类 steering + 自动执行”。这是实际科研里很重要的模式：人不想手动改每个文件，但想改变搜索方向。
+
+### 17. Leaderboard 的意义
+
+AutoSOTA README 里列了大量 optimized papers，并按 Paper ID 展示优化百分比。这个 leaderboard 的意义不是证明每个结果都是新论文贡献，而是证明：
+
+```text
+在很多不同论文代码库上，自动优化 loop 能找到非零提升。
+```
+
+这些提升类型非常多样：
+
+- 小幅阈值调整；
+- 推理后处理；
+- 模型维度调整；
+- 多 seed / ensemble；
+- checkpoint averaging；
+- 增加 Monte Carlo samples；
+- 使用 antithetic sampling；
+- 修复 normalization；
+- 选择更合适的 optimizer；
+- 减少过度求解；
+- 改 eval fidelity。
+
+这很符合 research code 的现实：很多论文代码不是完全榨干状态，存在大量工程、数值和评测细节可以优化。
+
+### 18. AutoSOTA 和 ARIS 的区别
+
+两者都属于 Auto Research，但工作对象不同。
+
+| 维度 | ARIS | AutoSOTA |
+|---|---|---|
+| 起点 | 研究方向、论文草稿、review、实验结果 | 本地可运行论文代码库和指标目标 |
+| 核心循环 | plan -> draft -> review -> fix -> persist | idea -> code change -> eval -> score -> keep best |
+| 主要 artifact | idea report, experiment log, narrative report, paper, wiki | idea library, scores, optimized code, patch |
+| 成功标准 | reviewer verdict, audit chain, claim support | metric improvement versus baseline |
+| 最大风险 | 幻觉 claim、自审盲区、引用错误 | reward hacking、评测污染、benchmark overfit |
+| 防线 | cross-model reviewer, audit chain, research wiki | protected paths, score logs, final diff |
+| 人类角色 | 设定方向、选择 idea、审阅最终研究 | 提供 repo、target、环境、审核 idea、steer 优化 |
+
+最简单的区别：
+
+```text
+ARIS 自动化“研究产出过程”。
+AutoSOTA 自动化“代码指标优化过程”。
+```
+
+### 19. AutoSOTA 可以成为 ARIS 的实验优化子系统
+
+虽然两者应该分开讲，但它们可以组合。
+
+一个更完整的未来系统可能是：
+
+```text
+ARIS /idea-discovery
+-> 找到研究方向和 baseline paper
+-> AutoSOTA 优化 baseline repo
+-> 产出 best patch 和 scores
+-> ARIS /result-to-claim 审查结果能支持什么 claim
+-> ARIS /paper-writing 写成论文
+-> ARIS /paper-claim-audit 检查数字是否如实报告
+```
+
+这会把两个系统的长处合起来：
+
+- ARIS 擅长 framing、review、claim discipline、paper artifact；
+- AutoSOTA 擅长 code-level search、metric loop、patch export。
+
+这也是 Auto Research 未来很自然的方向：不是一个 agent 全包，而是多个专用 loop 通过 artifact 对接。
+
+### 20. AutoSOTA 的适用场景
+
+AutoSOTA 最适合：
+
+- 论文代码已经能跑；
+- baseline 已经确认；
+- 主指标明确；
+- 评测时间可以接受；
+- 用户愿意让 agent 改代码；
+- 代码改动能通过 diff 审查；
+- 目标是提升 benchmark 或工程指标。
+
+它不适合：
+
+- 没有可运行 eval 的 repo；
+- 数据和 checkpoint 不完整；
+- 指标定义模糊；
+- 评测协议不能自动执行；
+- 不允许修改代码；
+- 需要严格理论证明而非指标优化；
+- 评测成本极高且无法快速迭代。
+
+<Tip>
+AutoSOTA 的最佳使用方式不是“扔一个 repo 进去等奇迹”，而是先把 baseline、metric、eval command、protected paths 和目标提升写清楚。
+</Tip>
+
+### 21. 一句话理解 AutoSOTA
+
+AutoSOTA 可以这样定义：
+
+```text
+AutoSOTA = paper-code benchmark optimizer with an agentic code-edit/eval loop
+```
+
+它把科研里的一个高频动作自动化了：拿到论文代码后，不断尝试工程和方法层面的改动，直到指标有提升，并把最好的改动以 patch 形式交付。
+
+它的价值不在于替代科研判断，而在于把大量重复、繁琐、但可能有效的实验搜索自动跑完。
+
+## Sources
+
+本页基于本地仓库调查，没有使用外部网页检索。
+
+主要来源：
+
+- `/Users/yitwah/Projects/AutoSOTA/README.md`
+- `/Users/yitwah/Projects/AutoSOTA/cli_guide.md`
+- `/Users/yitwah/Projects/AutoSOTA/site-data/README.md`
+- `/Users/yitwah/Projects/AutoSOTA/docs/index.html`
+
+为了比较 AutoSOTA 和 ARIS 的边界，也参考了：
+
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/AGENT_GUIDE.md`
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/docs/SKILLS_CATALOG.md`
+
+## Open Questions
+
+AutoSOTA 后续最值得继续查的是这些问题：
+
+1. 每个 leaderboard 结果是否都有完整、可复现的 `scores.jsonl`、baseline tag、best tag 和 patch？
+2. `protected_paths` 在多少 paper 上启用？未启用的结果怎样证明没有评测污染？
+3. 对于随机性很强的任务，AutoSOTA 是否默认要求多 seed 或置信区间？
+4. 如果提升来自 eval fidelity 修复，应该算作方法提升、工程修复，还是评测修正？
+5. AutoSOTA 是否能和 ARIS 的 `/experiment-audit` 或 `/paper-claim-audit` 对接，形成更强审计链？
+6. 对于目标提升未达到的任务，是否同样保留失败 idea，避免下次重复探索？
+
+我的判断是：AutoSOTA 是自动化科研里非常实用的一类工具，但它的可信度取决于评测边界是否硬、日志是否完整、patch 是否可复查。它越是追求 SOTA，就越需要把“不能改裁判”制度化。
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">research</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">autosota</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">auto-research</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">code-optimization</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">benchmarks</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Metric optimization</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Evaluation integrity</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Paper codebases</span>
+      </div>
+    </div>
+  </Card>
+</div>

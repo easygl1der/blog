@@ -1,0 +1,618 @@
+---
+title: "ARIS: 从自动科研到广义研究工作流"
+description: "ARIS 的核心不是某个模型或平台，而是把研究拆成计划、产出、跨模型审查、迭代和持久记忆的可迁移工作流。"
+date: "2026-06-02"
+type: "research"
+tags: [aris, auto-research, research-agents, workflow]
+status: "published"
+---
+
+# ARIS: 从自动科研到广义研究工作流
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">research</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">22 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    ARIS 原本是 Auto-claude-code-research-in-sleep 里的自动科研系统，但真正可迁移的是它的研究方法论：计划、草拟、对抗审查、迭代收敛、写入长期记忆。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">aris</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">auto-research</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">research-agents</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+  </div>
+</div>
+
+## Summary
+
+ARIS 这条线应该单独看。它最早的具体形态是 `Auto-claude-code-research-in-sleep`：让 agent 在你睡觉时读论文、找 idea、写代码、跑实验、接受外部模型审查、最后把结果组织成论文或 rebuttal。后来作者意识到，这个系统真正有价值的不是某个 Claude Code 技巧，而是一套“结构化研究”的通用方法，于是出现了 `ARIS-in-AI-Offer` 和 `ARIS-Anything`：前者把 ARIS 迁移成 AI 秋招知识库、技术博客和学术主页生成器；后者把迁移逻辑明确写成“科研 ⊂ 研究”的泛化框架。
+
+---
+
+## Research Question
+
+这篇笔记只回答 ARIS 这一条线的问题：
+
+- ARIS 原始的自动科研流程到底是什么？
+- 为什么它不是一个大 prompt，而是一套 workflow system？
+- `ARIS-in-AI-Offer` 是怎样从科研迁移到 AI 面试、教程、主页和博客的？
+- `ARIS-Anything` 又怎样把这个迁移提升成“广义研究”的方法论？
+- 如果把 ARIS 拓展到投资、法律、市场、学习、工程复盘等领域，哪些东西必须保留，哪些东西应该替换？
+
+我把结论先写在前面：ARIS 的核心资产不是“Claude 自动做科研”，而是一个可迁移的 artifact loop。
+
+```text
+问题 / 目标
+-> 计划
+-> 初稿或初始方案
+-> 不同模型家族的对抗审查
+-> 根据审查修复
+-> 重复直到收敛
+-> 把结论写入持久 wiki 或版本化文件
+-> 产出可交付物
+```
+
+只要一个领域也满足“有问题、有证据、有推理、有交付物”，它就可以被 ARIS 化。
+
+## Findings
+
+### 1. 四个仓库里，ARIS 线和 AutoSOTA 线应该分开
+
+这次调查涉及的仓库里，有三者属于 ARIS 迁移链：
+
+| 仓库 | 角色 | 说明 |
+|---|---|---|
+| `Auto-claude-code-research-in-sleep` | ARIS 主体 | 原始自动科研系统，覆盖 idea、实验、论文、rebuttal、talk、research wiki |
+| `ARIS-in-AI-Offer` | ARIS 的第一个强迁移样例 | 把同一套 review/render/workflow 思路迁移到 AI 面试 cheat sheet、技术博客和学术主页 |
+| `ARIS-Anything` | ARIS 方法论泛化 | 明确提出“科研只是研究的一种”，把 ARIS 推广到任意结构化研究 |
+
+`AutoSOTA` 应该单独开页分析。它也属于 Auto Research，但它的目标不是“从想法到论文”，而是“给定论文代码和评测指标，自动优化到更好的结果”。这两条线可以互补，但不应混在同一页里讲。
+
+### 2. ARIS 原始系统：Auto-claude-code-research-in-sleep
+
+`Auto-claude-code-research-in-sleep` 的 README 很长，但可以抽象成一句话：
+
+```text
+让 agent 用一组可组合的 SKILL.md 协议，自动推进 ML 科研生命周期。
+```
+
+这个生命周期不是单步完成的，而是分成多个明确 workflow：
+
+```text
+/research-pipeline
+  -> /idea-discovery
+  -> /experiment-bridge
+  -> /auto-review-loop
+  -> /paper-writing
+```
+
+每个 workflow 又由更细的 skill 组成。根据 `AGENT_GUIDE.md` 和 `docs/SKILLS_CATALOG.md`，ARIS 把科研活动拆成了这些模块：
+
+| 阶段 | 代表 skill | 功能 |
+|---|---|---|
+| 文献和搜索 | `/research-lit`, `/arxiv`, `/deepxiv`, `/openalex`, `/semantic-scholar` | 找文献、查元数据、去重、生成领域地图 |
+| 想法生成 | `/idea-creator`, `/idea-discovery`, `/novelty-check`, `/research-refine` | 生成 idea、做 novelty check、根据 reviewer 修正 |
+| 实验计划 | `/experiment-plan`, `/ablation-planner` | 把想法变成实验路线、消融、预算和运行顺序 |
+| 实验执行 | `/experiment-bridge`, `/run-experiment`, `/experiment-queue`, `/monitor-experiment` | 写代码、跑 sanity check、上 GPU、收集结果 |
+| 结果审查 | `/experiment-audit`, `/result-to-claim`, `/paper-claim-audit` | 检查 eval 是否诚实、结果能否支持 claim、论文是否如实报告数字 |
+| 对抗审查 | `/auto-review-loop`, `/research-review`, `/kill-argument`, `/proof-checker` | 让外部模型挑毛病、写 rejection memo、查证明、逼迫修复 |
+| 写作发表 | `/paper-plan`, `/paper-write`, `/paper-compile`, `/paper-writing`, `/rebuttal`, `/resubmit-pipeline` | 规划论文、写 LaTeX、编译、rebuttal、转投 |
+| 记忆和渲染 | `/research-wiki`, `/render-html`, `/wiki-enrich` | 持久化知识、生成 HTML 视图、补充 wiki |
+
+所以 ARIS 不是“一个 agent 自动写论文”。它更像一个轻量研究操作系统：每个技能都是一个协议，每个协议读写明确的文件，每个阶段都有可检查的 artifact。
+
+### 3. 为什么 ARIS 不是一个 prompt
+
+如果只是一个大 prompt，它的形态会是：
+
+```text
+用户给一个研究方向
+-> LLM 输出一篇看起来像论文的文本
+```
+
+ARIS 的形态完全不同：
+
+```text
+用户给研究方向
+-> 文献检索 artifact
+-> idea 报告 artifact
+-> 实验计划 artifact
+-> 代码和日志 artifact
+-> review 状态 artifact
+-> narrative report artifact
+-> LaTeX 论文 artifact
+-> audit artifact
+-> wiki artifact
+```
+
+这些 artifact 是关键，因为它们让系统可以被恢复、复审、局部重跑、局部替换。比如：
+
+- `IDEA_REPORT.md` 可以作为下一阶段的输入；
+- `EXPERIMENT_PLAN.md` 可以被 `/experiment-bridge` 消费；
+- `EXPERIMENT_LOG.md` 可以被 `/auto-review-loop` 和 `/result-to-claim` 消费；
+- `REVIEW_STATE.json` 可以让长循环在上下文压缩后恢复；
+- `research-wiki/` 可以让后续 idea generation 不从零开始。
+
+<Info>
+ARIS 的关键不是“上下文里记住了什么”，而是“文件系统里沉淀了什么”。这也是它能跨平台迁移到 Claude Code、Codex CLI、Cursor、Trae、Antigravity、Copilot CLI 等环境的原因。
+</Info>
+
+### 4. 原始 ARIS 工作流一：idea discovery
+
+`/idea-discovery` 是从模糊方向走向候选科研 idea 的阶段。它通常包含：
+
+1. 搜索和读文献；
+2. 归纳领域问题；
+3. 生成多个候选 idea；
+4. 检查 novelty；
+5. 做初步 feasibility 评估；
+6. 选择最值得推进的 idea；
+7. 输出 `IDEA_REPORT.md` 和实验计划。
+
+这个阶段的本质不是“让模型想点子”，而是把 idea 生成变成一个可审查过程。
+
+一个合理的 idea 报告至少要回答：
+
+- 这个 idea 解决什么 gap？
+- 它和哪些已有论文最接近？
+- 它的新意在哪里？
+- 它能不能用当前代码和算力做 pilot？
+- 如果要失败，最可能因为什么失败？
+
+这种结构很重要。很多科研 agent 最大的问题是它能生成听起来很新的方向，但没有把 novelty、feasibility、evidence、risk 分开。ARIS 的设计就是把这些分开成不同检查项。
+
+### 5. 原始 ARIS 工作流二：experiment bridge
+
+`/experiment-bridge` 是把想法变成可跑实验的阶段。它读上游实验计划，然后负责：
+
+- 解析 milestone；
+- 按现有代码库风格实现实验；
+- 做最小 sanity check；
+- 选择本地、远程、Vast、Modal 等 GPU 路由；
+- 收集结果；
+- 更新 tracker；
+- 在需要时触发 ablation。
+
+这一步非常关键，因为科研自动化不能只停在写作。如果没有实验桥，系统会变成“自动写 research proposal”。有了实验桥，它才开始接触真实反馈。
+
+ARIS 的一个重要细节是 code review gate：实验代码在花 GPU 时间之前，应由外部模型审查逻辑错误、指标错误、ground truth 误用等问题。这个设计和后面 AutoSOTA 的 `protected_paths` 思路有共同点：自动化系统不能只追求好数字，必须保护评测协议。
+
+### 6. 原始 ARIS 工作流三：auto review loop
+
+`/auto-review-loop` 是 ARIS 最核心的思想之一。
+
+它的形式是：
+
+```text
+当前研究 artifact
+-> 外部 reviewer 打分和列问题
+-> executor 修复
+-> 重新实验或重写
+-> reviewer 再审
+-> 直到达到停止条件或轮数上限
+```
+
+根据 skill 文件，停止条件不是简单的“分数够高”，而是：
+
+```text
+score >= 6/10 AND verdict in {"ready", "almost"}
+```
+
+这很重要，因为高分但 verdict 仍是 not ready 不应该停止。ARIS 把“数字分数”和“是否可提交”分开判断。
+
+更重要的是 executor 和 reviewer 要来自不同模型家族。ARIS 反复强调：
+
+```text
+executor can drive, never acquit
+```
+
+也就是说，同一个模型可以推进工作，但不能给自己的工作发通过证书。这个边界是 ARIS 的核心不变量。
+
+<Warning>
+没有独立 reviewer 的自动科研系统，很容易变成自我强化循环：模型写了一个看似合理的 claim，又用同一套偏见审查它，最后把漏洞包装成贡献。
+</Warning>
+
+### 7. 原始 ARIS 工作流四：paper writing 和 audit chain
+
+当实验和 review 有了足够结果，ARIS 进入论文写作：
+
+```text
+NARRATIVE_REPORT.md
+-> /paper-plan
+-> /paper-figure
+-> /paper-write
+-> /paper-compile
+-> /auto-paper-improvement-loop
+```
+
+这里最值得注意的不是它能写 LaTeX，而是它的 submission assurance chain。根据 `AGENT_GUIDE.md`，ARIS 把提交前审查分成五层：
+
+| 层 | skill | 审查问题 |
+|---|---|---|
+| 1 | `/experiment-audit` | 评测代码是否诚实，有没有 fake ground truth、phantom results、指标污染 |
+| 2 | `/result-to-claim` | 实验结果是否真的支持 claim |
+| 3 | `/paper-claim-audit` | 论文里的数字和比较是否如实来自 raw results |
+| 4 | `/citation-audit` | 引用是否真实、元数据是否正确、上下文是否合适 |
+| 5 | `/kill-argument` | 最强 rejection memo 是否还能击穿论文 |
+
+这套链路体现了 ARIS 的方法论：自动化不是为了跳过审查，而是把审查制度化。
+
+### 8. Research Wiki：ARIS 的长期记忆
+
+`/research-wiki` 是 ARIS 从“长对话”变成“长期系统”的关键。
+
+它定义了四类实体：
+
+| 实体 | 含义 |
+|---|---|
+| Paper | 已读论文 |
+| Idea | 提出、测试、失败或保留的研究想法 |
+| Experiment | 具体实验和结果 |
+| Claim | 可被证据支持或否定的科学主张 |
+
+它还定义了 typed relationships：
+
+| 边 | 含义 |
+|---|---|
+| `extends` | 一个 paper 建立在另一个 paper 上 |
+| `contradicts` | 一个 paper 反驳另一个 paper |
+| `addresses_gap` | paper 或 idea 解决某个 gap |
+| `inspired_by` | idea 来自某篇 paper |
+| `tested_by` | idea 或 claim 被某个实验测试 |
+| `supports` | 实验支持 claim |
+| `invalidates` | 实验否定 claim |
+
+这套 wiki 的意义是让 agent 的研究不是一次性消耗上下文，而是把失败 idea、支持证据、领域 gap、文献关系沉淀下来。下次生成 idea 时，系统可以从累积状态开始，而不是重新读一遍世界。
+
+### 9. ARIS-in-AI-Offer：第一个强迁移样例
+
+`ARIS-in-AI-Offer` 说明 ARIS 的 loop 可以离开“论文写作”本身。
+
+它有三个主要产物：
+
+1. AI 秋招 / ML 面试 cheat sheet；
+2. 长篇技术博客；
+3. fact-checked academic homepage。
+
+这些产物不是传统论文，但它们都有共同点：
+
+- 需要结构化知识；
+- 需要公式、代码、引用或事实；
+- 需要 reviewer 检查；
+- 需要最终可读的 HTML artifact；
+- 需要避免幻觉和个人信息泄漏。
+
+所以 ARIS-in-AI-Offer 不是“另一个资料仓库”，而是 ARIS 方法的第一个可见迁移证明。
+
+### 10. 面试 cheat sheet 怎么继承 ARIS
+
+`/interview-cheatsheet` 的工作流大概是：
+
+```text
+topic
+-> 规划 12-14 个章节
+-> 写 600-1000 行中文教程
+-> 加公式推导
+-> 加 from-scratch PyTorch
+-> 加 25 个高频面试题
+-> Codex 进行 math/code/factual/style review
+-> 修复
+-> /render-html 生成单文件 HTML
+-> render fidelity review
+-> 写 .review.json 审计记录
+```
+
+这和科研论文的结构不同，但继承了同一组不变量：
+
+| ARIS 原科研流程 | AI-Offer cheat sheet 对应物 |
+|---|---|
+| research direction | tutorial topic |
+| paper draft | long-form tutorial draft |
+| experiment code | from-scratch PyTorch example |
+| peer review | math/code/factual/style review |
+| paper PDF | single-file HTML |
+| audit artifact | `.review.json` |
+
+这证明 ARIS 不是只能写论文。它可以被看成“长技术 artifact 的自动生产和审查系统”。
+
+### 11. Homepage generator 怎么继承 ARIS
+
+`ARIS-Homepage` 的迁移更有意思，因为它处理的不是知识教程，而是个人事实。
+
+它的 pipeline 是：
+
+```text
+CV / repo snapshots / optional manual homepage
+-> LLM extraction
+-> profile.yml + publications.bib + bio.md + news.md
+-> DBLP / arXiv deterministic audit
+-> optional Codex review
+-> single-file academic homepage
+```
+
+这里 reviewer 的角色也发生了变化：
+
+- 对教程来说，reviewer 主要查公式、代码和技术事实；
+- 对 homepage 来说，reviewer 和 audit 主要查 CV 事实、论文 venue、年份、作者、奖项是否可靠；
+- 对 HTML 来说，还要查渲染 fidelity 和隐私泄漏。
+
+这就是 ARIS 可迁移的关键：保留“独立审查”的结构，但把审查标准换成领域标准。
+
+### 12. ARIS-Anything：把“科研”推广成“研究”
+
+`ARIS-Anything` 的核心判断是：
+
+```text
+科研 ⊂ 研究
+```
+
+这句话很重要。科研是研究的一种，但不是全部。广义研究可以包括：
+
+- 投资尽调；
+- 法律研究；
+- 医学文献综述；
+- 市场研究；
+- 自驱学习；
+- 调查新闻；
+- 工程复盘；
+- 个人知识管理；
+- 产品需求研究；
+- 设计方案研究。
+
+这些领域表面差别很大，但都有一个共同结构：
+
+```text
+问题
+-> 证据
+-> 推理
+-> 结论
+-> 可交付物
+```
+
+只要存在这个结构，ARIS 的五步 loop 就可以迁移。
+
+### 13. 迁移时保留什么
+
+跨领域迁移 ARIS 时，以下东西不应该变：
+
+| 不变量 | 原因 |
+|---|---|
+| artifact-first | 没有文件化 artifact，就不能复审、恢复、比较和审计 |
+| executor != reviewer | 防止模型自审自批导致 blind spot |
+| reviewer fresh context | 防止 reviewer 被 executor 的叙事带偏 |
+| typed memory | 让系统长期积累 paper、idea、experiment、claim 或领域等价物 |
+| evidence trace | 每个结论要能追到来源 |
+| failure taxonomy | reviewer 必须知道什么算失败 |
+| final deliverable gate | 不能因为流程跑完了就自动认为结果合格 |
+
+这些是 ARIS 的骨架。迁移时可以换皮，但不能拆骨架。
+
+### 14. 迁移时替换什么
+
+迁移到新领域时，需要替换的是领域相关部分：
+
+| 可替换部分 | 学术科研中的形态 | 其他领域中的形态 |
+|---|---|---|
+| evidence source | paper, arXiv, code, experiment logs | case law, financial filings, interviews, incident logs, product docs |
+| claim type | scientific claim | legal claim, investment thesis, product claim, root-cause claim |
+| evaluator | peer reviewer, proof checker, citation auditor | legal reviewer, risk reviewer, domain expert, red-team critic |
+| deliverable | paper, rebuttal, talk | memo, report, brief, PRD, postmortem, study guide |
+| wiki schema | paper / idea / experiment / claim | source / hypothesis / test / conclusion |
+
+这就是为什么 ARIS-Anything 可以合理讨论很多方向。不是因为一个 LLM 真的“懂所有行业”，而是因为每个行业都可以被建模成“证据到结论”的过程。
+
+### 15. 投资尽调如何 ARIS 化
+
+投资研究可以这样迁移：
+
+```text
+公司或行业问题
+-> source gathering: 年报、电话会、新闻、竞品、监管文件
+-> thesis draft: bull / bear case
+-> reviewer: 风险审查和反方投资人视角
+-> iterate: 修正估值、风险、催化剂和反证
+-> persist: company wiki / sector wiki
+-> deliverable: investment memo
+```
+
+对应的 wiki 实体可以变成：
+
+| ARIS 实体 | 投资版 |
+|---|---|
+| Paper | Filing / earnings call / report |
+| Idea | Investment thesis |
+| Experiment | Backtest / scenario analysis / channel check |
+| Claim | Revenue growth claim / margin claim / moat claim |
+
+最重要的 reviewer 不是“语言润色”，而是：
+
+- bull case 是否过度依赖单一假设；
+- bear case 是否被认真处理；
+- valuation 是否和 comps 一致；
+- catalyst 是否有时间尺度；
+- downside 是否量化。
+
+### 16. 法律研究如何 ARIS 化
+
+法律研究可以这样迁移：
+
+```text
+法律问题
+-> 搜索法规、判例、合同、监管解释
+-> 构造 argument map
+-> 独立 reviewer 按 jurisdiction 和 precedent 挑错
+-> 修复引用、限定适用范围
+-> 输出 legal memo 或 case brief
+```
+
+这里不能直接复用科研 reviewer。法律领域的 failure taxonomy 应该包括：
+
+- jurisdiction 错误；
+- precedent 过期；
+- holding 和 dicta 混淆；
+- 引用不支持命题；
+- 忽略相反判例；
+- 把事实问题说成法律确定性。
+
+ARIS 的结构仍然有用，但 reviewer 必须懂法律证据标准。
+
+### 17. 工程复盘如何 ARIS 化
+
+工程 incident postmortem 也很适合 ARIS：
+
+```text
+事故日志和用户影响
+-> timeline reconstruction
+-> root cause hypothesis
+-> reviewer 挑战因果链
+-> action-item audit
+-> persist 到 incident wiki
+-> 输出 postmortem
+```
+
+这里的 claim 不是 scientific claim，而是 root-cause claim：
+
+```text
+事件 X 导致 Y，因为 Z 证据支持。
+```
+
+reviewer 要查：
+
+- timeline 是否漏关键事件；
+- root cause 是否只是 proximate cause；
+- action item 是否能防止复发；
+- 是否把人责当成系统原因；
+- 是否有无法验证的推断。
+
+这和 ARIS 的 `/result-to-claim` 很像：结果是否真的支持结论？
+
+### 18. 自驱学习如何 ARIS 化
+
+自学也可以被看成研究：
+
+```text
+学习目标
+-> 知识地图
+-> curriculum plan
+-> 练习和测试
+-> reviewer 查薄弱环节
+-> persist 到 learning wiki
+-> 输出 cheat sheet / study guide / flashcards
+```
+
+`ARIS-in-AI-Offer` 其实已经证明了这一点。面试 cheat sheet 本质上是面向某个 topic 的学习和复习 artifact。它把一个技术领域拆成：
+
+- 直觉；
+- 公式；
+- 代码；
+- 工程细节；
+- 常见坑；
+- 高频问题；
+- 进阶追问。
+
+这套模板可以推广到不止 AI 面试，比如数学、系统设计、数据库、编译器、金融建模、法律考试等。
+
+### 19. ARIS 方法的真正边界
+
+ARIS 的边界不是“能不能调用更强模型”，而是下面几个条件是否满足：
+
+1. 是否能定义清晰 artifact？
+2. 是否能找到可靠 evidence source？
+3. 是否能定义什么算错误？
+4. 是否能让 reviewer 独立审查？
+5. 是否能把结果写入长期记忆？
+
+如果一个领域无法回答这些问题，ARIS 化就会变成漂亮但危险的自动写作。
+
+例如：
+
+- 如果没有 evidence source，就会变成编造；
+- 如果没有 failure taxonomy，就会变成主观打分；
+- 如果没有 reviewer independence，就会变成自我确认；
+- 如果没有 artifact，就无法恢复和复查；
+- 如果没有 memory，就只能一次次重来。
+
+### 20. 一句话理解 ARIS
+
+ARIS 可以这样定义：
+
+```text
+ARIS = artifact-based inquiry + cross-model adversarial review + persistent research memory
+```
+
+它的重点不是“让 AI 替你想”，而是“把研究变成一个可被工具、模型和人共同推进的审查循环”。
+
+<Tip>
+迁移 ARIS 时，不要先问“这个领域能不能被 AI 自动化”。先问“这个领域的 artifact、evidence、reviewer、memory 分别是什么”。
+</Tip>
+
+## Sources
+
+本页基于本地仓库调查，没有使用外部网页检索。
+
+主要来源：
+
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/README.md`
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/AGENT_GUIDE.md`
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/docs/SKILLS_CATALOG.md`
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/skills/research-pipeline/SKILL.md`
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/skills/auto-review-loop/SKILL.md`
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep/skills/research-wiki/SKILL.md`
+- `/Users/yitwah/Projects/ARIS-in-AI-Offer/README.md`
+- `/Users/yitwah/Projects/ARIS-in-AI-Offer/skills/interview-cheatsheet/SKILL.md`
+- `/Users/yitwah/Projects/ARIS-in-AI-Offer/skills/render-html/SKILL.md`
+- `/Users/yitwah/Projects/ARIS-in-AI-Offer/skills/homepage-generator/SKILL.md`
+- `/Users/yitwah/Projects/ARIS-Anything/README.md`
+- `/Users/yitwah/Projects/ARIS-Anything/README_CN.md`
+
+## Open Questions
+
+ARIS 的方法论很强，但还有几个问题值得继续追：
+
+1. 不同领域的 reviewer 如何定义？如果 reviewer 只是通用 LLM，它可能无法发现领域特有错误。
+2. Research wiki 如何避免污染？失败 idea 应该保存，但环境错误、工具故障、误判不能沉淀成长期知识。
+3. 跨模型审查的成本如何控制？最强 reviewer 很贵，什么时候需要 full audit，什么时候只需要 lightweight review？
+4. 如果多个 agent 并行探索，如何合并 memory 和 reviewer verdict？
+5. 广义研究里哪些领域适合全自动，哪些必须 human-in-the-loop？
+
+我的判断是：ARIS 最适合那些 artifact 清晰、证据可追踪、错误可定义的研究任务。它不适合证据源模糊、标准高度主观、或不能接受自动推断风险的场景。
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">research</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">aris</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">auto-research</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">research-agents</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Cross-model review</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Research wiki</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">广义研究</span>
+      </div>
+    </div>
+  </Card>
+</div>
