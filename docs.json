@@ -18,24 +18,44 @@
               {
                 "group": "June",
                 "pages": [
-                  "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps",
-                  "docs/notes/2026/06/2026-06-02-cloudflare-ip-dns",
-                  "docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp",
-                  "docs/notes/2026/06/2026-06-02-operate-langflow-flows-through-api-and-mcp",
-                  "docs/notes/2026/06/2026-06-02-codex-goal",
-                  "docs/notes/2026/06/2026-06-02-vercel",
-                  "docs/notes/2026/06/2026-06-02-generate-a-whole-book-with-langflow",
-                  "docs/notes/2026/06/2026-06-02-deep-research-is-an-orchestration-loop",
-                  "docs/notes/2026/06/2026-06-02-recreate-perplexity-search-with-langflow",
-                  "docs/notes/2026/06/2026-06-02-how-to-recreate-perplexity-computer-in-langflow",
-                  "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
-                  "docs/notes/2026/06/2026-06-02-langflow-debugging-playbook",
-                  "docs/notes/2026/06/2026-06-02-browseros-mcp",
-                  "docs/notes/2026/06/2026-06-02-takenotes",
-                  "docs/notes/2026/06/2026-06-02-crawler-reads-urls-search-finds-urls",
-                  "docs/notes/2026/06/2026-06-02-source-maps-chunk-citations-and-citation-validation",
-                  "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
-                  "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows"
+                  {
+                    "group": "Self-Hosted AI Infrastructure",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-02-cloudflare-ip-dns",
+                      "docs/notes/2026/06/2026-06-02-vercel",
+                      "docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp",
+                      "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps"
+                    ]
+                  },
+                  {
+                    "group": "LangFlow Systems",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-02-generate-a-whole-book-with-langflow",
+                      "docs/notes/2026/06/2026-06-02-operate-langflow-flows-through-api-and-mcp",
+                      "docs/notes/2026/06/2026-06-02-langflow-debugging-playbook"
+                    ]
+                  },
+                  {
+                    "group": "Search And Research Agents",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-02-recreate-perplexity-search-with-langflow",
+                      "docs/notes/2026/06/2026-06-02-deep-research-is-an-orchestration-loop",
+                      "docs/notes/2026/06/2026-06-02-crawler-reads-urls-search-finds-urls",
+                      "docs/notes/2026/06/2026-06-02-source-maps-chunk-citations-and-citation-validation",
+                      "docs/notes/2026/06/2026-06-02-how-to-recreate-perplexity-computer-in-langflow",
+                      "docs/notes/2026/06/2026-06-02-browseros-mcp"
+                    ]
+                  },
+                  {
+                    "group": "Codex As Workflow Engine",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-02-codex-goal",
+                      "docs/notes/2026/06/2026-06-02-takenotes",
+                      "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
+                      "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows",
+                      "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify"
+                    ]
+                  }
                 ]
               }
             ]

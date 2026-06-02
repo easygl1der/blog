@@ -126,7 +126,14 @@ Merge or avoid duplicating:
 
 ## Current Notes Audit
 
-Keep as pillars:
+Public navigation is organized into four theme groups:
+
+- Self-Hosted AI Infrastructure
+- LangFlow Systems
+- Search And Research Agents
+- Codex As Workflow Engine
+
+Keep as pillars or case studies:
 
 - `2026-06-02-generate-a-whole-book-with-langflow`
 - `2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp`
@@ -142,6 +149,10 @@ Keep as pillars:
 - `2026-06-02-build-codex-skills-for-repeatable-workflows`
 - `2026-06-02-vercel`
 - `2026-06-02-cloudflare-ip-dns`
+- `2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps` as a self-hosted case study
+- `2026-06-02-how-to-use-and-recreate-mintlify` as a publishing/tooling case study
+- `2026-06-02-how-to-recreate-perplexity-computer-in-langflow` as a Computer-like runtime case study
+- `2026-06-02-browseros-mcp` as a browser automation case study
 
 Archived raw material hidden from public navigation:
 
