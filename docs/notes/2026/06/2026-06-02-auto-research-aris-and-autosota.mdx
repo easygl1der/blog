@@ -1,0 +1,353 @@
+---
+title: "Auto Research: ARIS And AutoSOTA"
+description: "ARIS generalizes automatic academic research into a skill-based inquiry loop, while AutoSOTA focuses the same automation pressure on improving runnable paper codebases."
+date: "2026-06-02"
+type: "research"
+tags: [auto-research, aris, autosota, research-agents]
+status: "published"
+---
+
+# Auto Research: ARIS And AutoSOTA
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">research</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">14 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    ARIS is the broader automatic inquiry method: plan, draft, adversarially review, iterate, and persist; AutoSOTA is a narrower automatic optimization loop for paper code and benchmark metrics.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">auto-research</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">aris</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">autosota</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">research-agents</span>
+  </div>
+</div>
+
+## Summary
+
+The four repositories form two related but different branches of automated research. `Auto-claude-code-research-in-sleep` is the original ARIS system for academic research workflows; `ARIS-in-AI-Offer` and `ARIS-Anything` show how the same workflow can be moved into interview prep, academic homepages, blogs, and broader structured inquiry. `AutoSOTA` is adjacent rather than a direct ARIS fork: it automates the loop of reading a paper codebase, finding optimization ideas, changing code, running evaluation, and exporting the best patch.
+
+---
+
+## Research Question
+
+What do these repositories reveal about "Auto Research" as a practical system pattern?
+
+The question has three parts:
+
+- What is the original ARIS workflow, and why is it more than a prompt?
+- How did ARIS move from academic science into `ARIS-in-AI-Offer` and then `ARIS-Anything`?
+- How does `AutoSOTA` fit the same automatic-research theme while targeting a different deliverable?
+
+The short answer is that all four repos treat research as a controlled loop over artifacts. The loop matters more than the surface domain. The domain changes the evidence source, evaluator, and final artifact; the machinery still needs planning, tool use, review, iteration, and durable memory.
+
+## Findings
+
+### Repository map
+
+| Repository | Role | Main deliverable | Core loop |
+|---|---|---|---|
+| `Auto-claude-code-research-in-sleep` | ARIS main repo | Ideas, experiments, papers, rebuttals, talks, research wiki | Literature and idea discovery -> experiments -> cross-model review -> paper writing |
+| `ARIS-in-AI-Offer` | First strong downstream application | Bilingual ML interview cheat sheets, long-form technical blogs, fact-checked academic homepage | Topic/CV -> structured extraction or tutorial draft -> cross-model review -> single-file HTML |
+| `ARIS-Anything` | Methodology generalization layer | Notes about moving ARIS from narrow academic research into broad structured inquiry | Same five-step inquiry loop, re-skinned by domain |
+| `AutoSOTA` | Automated code optimization system | Optimized code snapshots, patches, per-paper leaderboard | Onboard repo -> research ideas -> modify code -> evaluate -> keep best patch |
+
+The relationship is easiest to see as a tree:
+
+```text
+Auto Research
+├─ ARIS method
+│  ├─ Auto-claude-code-research-in-sleep
+│  │  └─ academic research lifecycle
+│  ├─ ARIS-in-AI-Offer
+│  │  └─ interview/tutorial/homepage artifacts
+│  └─ ARIS-Anything
+│     └─ general structured inquiry theory
+└─ AutoSOTA
+   └─ benchmark-driven paper-code optimization
+```
+
+### ARIS starts as automatic academic research
+
+The original ARIS repo is named `Auto-claude-code-research-in-sleep`, but the important abstraction is not sleep or Claude Code. It is a research harness made out of plain `SKILL.md` contracts.
+
+The canonical full pipeline is:
+
+```text
+/research-pipeline
+  -> /idea-discovery
+  -> /experiment-bridge
+  -> /auto-review-loop
+  -> /paper-writing
+```
+
+Inside that chain:
+
+1. `/idea-discovery` runs literature search, idea creation, novelty checking, and research review.
+2. `/experiment-bridge` turns the chosen plan into code, sanity checks it, deploys experiments, and collects results.
+3. `/auto-review-loop` sends the artifact to an external reviewer model, implements fixes, and repeats until the reviewer says it is close enough or the round budget is exhausted.
+4. `/paper-writing` turns the narrative report into a LaTeX paper, figures, compilation output, and submission checks.
+
+The key rule is cross-model adversarial review. The executor can write code, draft papers, and run experiments, but it cannot acquit itself. A different model family reviews the artifact in a fresh context. This is the important difference between "LLM writes a paper" and "an automated research system": the system has a jury that is separate from the worker.
+
+<Info>
+ARIS treats HTML, papers, review JSON, research wiki pages, experiment logs, and patches as durable artifacts. The artifact boundary is what makes the workflow inspectable.
+</Info>
+
+### The original ARIS loop has five stable operations
+
+`ARIS-Anything` names the transferable core explicitly:
+
+1. Plan the inquiry.
+2. Draft the first artifact.
+3. Review adversarially with a different model family.
+4. Iterate until the artifact converges.
+5. Persist the result into a wiki or versioned file system.
+
+This loop is not specific to machine learning. Machine learning research is just the first target because it has unusually clear artifacts: papers, code, metrics, ablations, rebuttals, and citations.
+
+The reusable pattern is:
+
+```text
+question
+-> scoped plan
+-> executor draft
+-> independent reviewer
+-> targeted fix
+-> re-review
+-> durable memory
+-> final artifact
+```
+
+That is why ARIS can move from "科研" to "研究". In narrow academic research, the evidence is literature and experiments. In broader research, evidence can be contracts, market data, legal cases, product interviews, incident logs, source documents, or personal learning progress.
+
+### ARIS-in-AI-Offer is the concrete migration proof
+
+`ARIS-in-AI-Offer` shows that ARIS can produce non-paper artifacts without changing the core mental model.
+
+The first product is an ML interview cheat-sheet library:
+
+```text
+topic
+-> /interview-cheatsheet plan
+-> long Chinese tutorial draft
+-> formula/code/citation/style review
+-> /render-html
+-> reviewed single-file HTML
+```
+
+The resulting artifact is not a paper. It is a tutorial with formulas, derivations, runnable PyTorch, comparison tables, and 25 interview questions. But the structure still mirrors ARIS:
+
+- plan the target knowledge area;
+- draft a large technical artifact;
+- ask an external reviewer to check math, code, citations, and style;
+- fix and re-render;
+- preserve `.review.json` as the audit trail.
+
+The second product is `ARIS-Homepage`, which moves even further away from academic paper writing:
+
+```text
+CV / repo snapshots / optional manual homepage
+-> extraction JSON
+-> editable profile.yml, publications.bib, bio.md, news.md
+-> deterministic DBLP/arXiv audit
+-> optional cross-model review
+-> single-file academic homepage
+```
+
+This is a strong generalization example because the final artifact is a personal site. The system still needs evidence discipline: venue, year, author, awards, and publication claims must pass an audit before shipping. The deliverable changes, but the invariant stays: do not let the generator be the only judge of truth.
+
+### ARIS-Anything turns the migration into a framework
+
+`ARIS-Anything` is less of a production repo and more of a map for future domain transfers. Its main claim is:
+
+```text
+科研 is a subset of 研究.
+```
+
+That means academic science is one instance of a wider pattern: structured inquiry with a question, evidence, reasoning, and a deliverable.
+
+The migration recipe is:
+
+| ARIS academic component | Generalized version |
+|---|---|
+| Literature search | Source gathering |
+| Research idea | Inquiry hypothesis |
+| Experiment | Test, audit, simulation, benchmark, or evidence check |
+| Paper claim | Deliverable claim |
+| Peer review | Independent adversarial critique |
+| Research wiki | Domain wiki or case memory |
+| Paper PDF | Memo, report, brief, PRD, homepage, tutorial, postmortem, or benchmark patch |
+
+The repo lists candidate domains such as investment due diligence, legal research, medical literature, market research, self-directed learning, investigation, journalism, and engineering postmortems. The operational move is not "ask an LLM to be a lawyer" or "ask an LLM to be an investor." The move is to define domain-specific artifacts and reviewers:
+
+- Investment: bull/bear memo, valuation table, source ledger, risk review.
+- Legal: case table, argument map, citation audit, jurisdiction constraints.
+- Market research: competitor matrix, user evidence, positioning memo, weak-claim review.
+- Engineering postmortem: incident timeline, root cause tree, action-item audit.
+- Self-study: curriculum map, concept wiki, exercises, mastery checks.
+
+<Tip>
+The extension rule is simple: keep the five-step loop, replace the evidence source and final artifact, then add a reviewer that knows what failure looks like in that domain.
+</Tip>
+
+### AutoSOTA is automatic research as optimization rather than writing
+
+`AutoSOTA` belongs in the same Auto Research group, but it is not the same kind of system as ARIS.
+
+ARIS asks:
+
+```text
+Can an agent discover, validate, write, and defend a research contribution?
+```
+
+AutoSOTA asks:
+
+```text
+Given a runnable paper codebase and a metric, can an agent improve the score?
+```
+
+The CLI workflow is:
+
+```text
+paper/target.md + optional paper.pdf + local cloned repo
+-> autosota --repo /path/to/clone
+-> onboard
+-> research
+-> optional ideas review
+-> optimize loop
+-> optimized_code/<paper>/final_patch.diff
+```
+
+Its key phases are:
+
+1. Onboard: inspect the local repository, find evaluation commands, establish baseline metrics, and generate paper-specific config.
+2. Research: use a research model to gather relevant optimization ideas from literature or priors.
+3. Ideas review: optionally pause so a human can edit the idea library before optimization.
+4. Optimize: repeatedly pick an idea, change code, run evaluation, log scores, and retain the best commit.
+5. Export: copy the best code and write `final_patch.diff` from baseline to best.
+
+The important system contract is that `AutoSOTA` operates on a local code repository whose evaluation already runs. It does not magically make an arbitrary paper reproducible. It assumes the user has cloned code, installed dependencies, and defined a metric target.
+
+### AutoSOTA's safety boundary is the evaluator
+
+AutoSOTA is more vulnerable to reward hacking than tutorial generation because its reward is a number. If the agent can modify the evaluation script or test set, it may learn to improve the reported metric without improving the method.
+
+That is why the CLI includes optional `protected_paths`:
+
+```yaml
+protected_paths:
+  - "eval.py"
+  - "src/metrics/"
+  - "data/test/"
+```
+
+The mechanism is direct:
+
+- after baseline, hash protected paths;
+- after each iteration, re-hash them;
+- if the hash changes, reject the iteration;
+- do not commit it, do not record its score, and do not update the best tag.
+
+This is the AutoSOTA version of ARIS's reviewer-independence rule. ARIS prevents the writer from acquitting its own paper. AutoSOTA prevents the optimizer from changing the judge.
+
+<Warning>
+For AutoSOTA, the evaluation script is part of the scientific contract. If the metric code is mutable, the optimization target is contaminated.
+</Warning>
+
+### The two systems optimize different artifacts
+
+ARIS and AutoSOTA both automate research work, but their units of progress are different.
+
+| Dimension | ARIS | AutoSOTA |
+|---|---|---|
+| Main artifact | Research narrative, paper, review report, wiki, HTML | Code diff, optimized snapshot, score curve |
+| Success signal | External reviewer verdict, audit chain, supported claims | Primary metric improvement versus baseline |
+| Failure mode | Hallucinated claims, weak evidence, self-review blind spots | Metric hacking, broken evaluation, overfitting to benchmark |
+| Memory | Research wiki and review traces | Run directories, idea library, scores, final patch |
+| Human role | Choose direction, approve checkpoints, review final artifacts | Provide runnable repo, target metric, optional idea review |
+
+This distinction matters because "Auto Research" is not one product. It is a family of loops:
+
+- ARIS is a knowledge-and-artifact loop.
+- AutoSOTA is a code-and-metric loop.
+
+The systems can complement each other. A future combined pipeline could use ARIS to discover and frame a method, then use AutoSOTA-style optimization to squeeze a runnable baseline, then return the evidence back to ARIS for claim auditing and paper writing.
+
+## Sources
+
+This note is based on local inspection of four repositories:
+
+- `/Users/yitwah/Projects/Auto-claude-code-research-in-sleep`
+- `/Users/yitwah/Projects/ARIS-in-AI-Offer`
+- `/Users/yitwah/Projects/ARIS-Anything`
+- `/Users/yitwah/Projects/AutoSOTA`
+
+Key files inspected:
+
+- `Auto-claude-code-research-in-sleep/README.md`
+- `Auto-claude-code-research-in-sleep/AGENT_GUIDE.md`
+- `Auto-claude-code-research-in-sleep/docs/SKILLS_CATALOG.md`
+- `Auto-claude-code-research-in-sleep/skills/research-pipeline/SKILL.md`
+- `Auto-claude-code-research-in-sleep/skills/auto-review-loop/SKILL.md`
+- `Auto-claude-code-research-in-sleep/skills/research-wiki/SKILL.md`
+- `ARIS-in-AI-Offer/README.md`
+- `ARIS-in-AI-Offer/skills/interview-cheatsheet/SKILL.md`
+- `ARIS-in-AI-Offer/skills/render-html/SKILL.md`
+- `ARIS-in-AI-Offer/skills/homepage-generator/SKILL.md`
+- `ARIS-Anything/README.md`
+- `ARIS-Anything/README_CN.md`
+- `AutoSOTA/README.md`
+- `AutoSOTA/cli_guide.md`
+
+## Open Questions
+
+Several things are still worth investigating before treating these systems as production-grade research infrastructure.
+
+First, ARIS's strongest claim depends on cross-model reviewer quality. The repo designs the reviewer boundary well, but actual reliability still depends on the reviewer model, prompt fidelity, context selection, and whether the artifacts contain enough raw evidence.
+
+Second, `ARIS-Anything` has the correct abstraction, but each new domain still needs its own failure taxonomy. Legal research, investing, medicine, and engineering postmortems do not share the same standards for "enough evidence."
+
+Third, AutoSOTA's leaderboard shows many successful optimizations, but each result should be interpreted through the evaluation protocol. A metric gain is meaningful only when protected evaluation paths, benchmark splits, and comparison baselines are trustworthy.
+
+Fourth, the most interesting future system is probably a bridge: ARIS for field understanding and claim discipline, AutoSOTA for code-level metric search, then ARIS again for result-to-claim and paper writing.
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">research</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">auto-research</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">aris</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">autosota</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">research-agents</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">ARIS methodology</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Cross-model review</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Benchmark optimization</span>
+      </div>
+    </div>
+  </Card>
+</div>

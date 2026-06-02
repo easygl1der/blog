@@ -57,6 +57,12 @@
                     ]
                   },
                   {
+                    "group": "Auto Research",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-02-auto-research-aris-and-autosota"
+                    ]
+                  },
+                  {
                     "group": "Codex As Workflow Engine",
                     "pages": [
                       "docs/notes/2026/06/2026-06-02-codex-goal",
