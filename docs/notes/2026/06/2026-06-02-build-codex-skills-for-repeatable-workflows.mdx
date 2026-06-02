@@ -1,0 +1,312 @@
+---
+title: "Build Codex Skills For Repeatable Workflows"
+description: "A practical guide to turning repeated Codex workflows into concise, triggerable, validated skills with scripts, references, and safe operating boundaries."
+date: "2026-06-02"
+type: "guide"
+tags: [codex, skills, workflow, automation, agents]
+status: "published"
+---
+
+# Build Codex Skills For Repeatable Workflows
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">11 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    A Codex skill is not a long manual; it is a compact operating procedure that makes a repeated task triggerable, reliable, and easy to validate.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">skills</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+  </div>
+</div>
+
+## Summary
+
+Codex skills are how a workflow stops being a one-off conversation and becomes reusable infrastructure. A good skill tells Codex when to activate, what workflow to follow, which scripts or references to use, what safety boundaries matter, and how to validate the result.
+
+This note completes the Codex workflow series: [Use Codex Goal For Long Tasks](/docs/notes/2026/06/2026-06-02-codex-goal) covers long-running execution, [Use Takenotes To Turn Debugging Into Blog Posts](/docs/notes/2026/06/2026-06-02-takenotes) covers turning work into published knowledge, and [Safe Git Collaboration With An AI Agent](/docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent) covers Git safety. Skills are the layer that makes those patterns repeatable.
+
+---
+
+## What This Solves
+
+Repeated agent work often starts as prompts:
+
+```text
+When I ask you to takenotes, please write MDX, update navigation, run Mintlify checks, commit, push, and deploy.
+```
+
+That works once, but it is fragile. The instruction can be forgotten, partially followed, or mixed with unrelated context. A skill turns that repeated behavior into a local artifact:
+
+```text
+skill metadata -> trigger
+SKILL.md -> workflow
+scripts/ -> deterministic steps
+references/ -> optional details
+validation -> proof that the skill works
+```
+
+Use a skill when a workflow has all three properties:
+
+- it repeats often;
+- it has task-specific rules that are easy to forget;
+- it has a validation path.
+
+<Info>
+The best skills are short. They give Codex just enough procedural knowledge to act correctly, then rely on scripts and references for heavier detail.
+</Info>
+
+## Who This Is For
+
+This is for someone who has started to use Codex as a workflow engine and now wants repeatable behavior instead of re-explaining the same process every time.
+
+Good candidates include:
+
+- publishing blog notes with takenotes;
+- reviewing frontend or backend code with local conventions;
+- running browser automation checks;
+- operating LangFlow flows through APIs;
+- generating PDF or document artifacts;
+- enforcing safe Git collaboration rules.
+
+## Prerequisites
+
+- A Codex environment that can discover local skills.
+- A skill directory under a discoverable root such as `$CODEX_HOME/skills`.
+- A clear workflow worth repeating.
+- A way to validate the skill on realistic tasks.
+- Optional scripts, references, or assets when plain instructions are not enough.
+
+<Warning>
+Do not put private API keys, production domains, local user paths, customer data, or one-off secrets into a public or shared skill. Use environment variables and public-safe example values.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Start from repeated real work">
+    Do not create a skill for an abstract idea. Start from concrete repeated tasks:
+
+    ```text
+    I repeatedly ask Codex to turn raw notes into a Mintlify post.
+    I repeatedly ask Codex to review dirty Git state before committing.
+    I repeatedly ask Codex to create and run LangFlow flows through API calls.
+    ```
+
+    A skill should capture a proven workflow, not a vague preference.
+  </Step>
+
+  <Step title="Define the trigger in one sentence">
+    Codex sees the skill metadata before it sees the full skill body. The description must say when the skill should activate.
+
+    Weak description:
+
+    ```yaml
+    description: Helps with notes.
+    ```
+
+    Strong description:
+
+    ```yaml
+    description: Use when the user asks to turn raw debugging logs, deployment notes, AI conversations, or research notes into a published Mintlify MDX post with validation, Git commit, push, and Vercel deployment.
+    ```
+
+    The trigger should include task type, input shape, expected output, and any important tool surface.
+  </Step>
+
+  <Step title="Choose the right degrees of freedom">
+    Not every skill needs the same strictness.
+
+    | Skill Type | Best Form | Example |
+    | --- | --- | --- |
+    | Flexible writing workflow | Concise instructions and checklist | Blog synthesis, review notes |
+    | Semi-structured workflow | Pseudocode plus commands | Git safety, deployment checks |
+    | Fragile repeatable operation | Script with fixed arguments | Publishing MDX and updating navigation |
+
+    If the operation is easy to get wrong, use a script. If judgment matters, keep enough freedom for Codex to adapt.
+  </Step>
+
+  <Step title="Keep SKILL.md lean">
+    A practical skill folder looks like this:
+
+    ```text
+    my-skill/
+      SKILL.md
+      scripts/
+        run_check.py
+      references/
+        provider-details.md
+      assets/
+        template.mdx
+    ```
+
+    `SKILL.md` should contain the core procedure. Move long schemas, provider-specific details, examples, and generated templates into `references/`, `scripts/`, or `assets/`.
+  </Step>
+
+  <Step title="Use scripts for deterministic work">
+    If Codex keeps rewriting the same code or making the same fragile edits, turn that step into a script.
+
+    Good script candidates:
+
+    - update a navigation file;
+    - validate frontmatter;
+    - scan for private identifiers;
+    - render or export an artifact;
+    - run a stable API call;
+    - normalize a file format.
+
+    A skill should instruct Codex to call the script instead of reimplementing it every time.
+  </Step>
+
+  <Step title="Use references for optional detail">
+    References are for information that is useful only in some cases.
+
+    ```text
+    references/
+      openapi.md
+      provider-a.md
+      provider-b.md
+      troubleshooting.md
+    ```
+
+    In `SKILL.md`, explain when to read each reference:
+
+    ```markdown
+    If the user asks about provider-specific deployment, read `references/provider-a.md`.
+    If validation fails, read `references/troubleshooting.md`.
+    ```
+
+    This keeps the skill body small while preserving depth.
+  </Step>
+
+  <Step title="Write safety rules explicitly">
+    Skills should carry the safety boundaries that matter for their domain.
+
+    For example, a publishing skill should say:
+
+    - do not publish real domains or API keys;
+    - run Mintlify validation before commit;
+    - commit only the note and navigation files;
+    - do not run destructive Git commands without approval.
+
+    Safety rules belong in the skill because they are part of the workflow, not optional style.
+  </Step>
+
+  <Step title="Validate with realistic prompts">
+    A skill is not done when the file exists. Test it against tasks that look like real user requests.
+
+    Example validation prompts:
+
+    ```text
+    takenotes this VPS deployment log into a beginner-friendly Mintlify post.
+    Review this dirty worktree and commit only the new note.
+    Create a LangFlow flow from this JSON and run it with a sample input.
+    ```
+
+    Look for:
+
+    - Did the skill trigger?
+    - Did Codex read only relevant references?
+    - Did it use scripts instead of reinventing fragile steps?
+    - Did it run the intended validation?
+    - Did it avoid unsafe side effects?
+  </Step>
+</Steps>
+
+## Skill Design Checklist
+
+| Question | Good Answer |
+| --- | --- |
+| What should trigger this skill? | A concrete user request pattern |
+| What should not trigger it? | Adjacent tasks that belong to another skill |
+| What is the output? | File, commit, artifact, review, deployment, or report |
+| Which parts are deterministic? | Put them in scripts |
+| Which parts require judgment? | Keep them in SKILL.md instructions |
+| Which details are optional? | Put them in references |
+| What can go wrong? | Add failure modes and validation |
+| What should never happen? | Add explicit safety rules |
+
+## Common Failure Modes
+
+<Warning>
+**Writing a giant skill.** If `SKILL.md` becomes a full manual, Codex has to spend context on details it may not need. Move variants and long references into separate files.
+</Warning>
+
+<Warning>
+**Making the trigger too vague.** A vague description causes the skill to trigger in the wrong tasks or not trigger when needed. The description should mention the user's likely wording and the expected output.
+</Warning>
+
+<Warning>
+**Putting secrets into skill files.** Skills can be reused and shared. Keep secrets in environment variables or secret stores, not in `SKILL.md` or references.
+</Warning>
+
+<Warning>
+**Relying on instructions for fragile operations.** If a step must be exact, write a script and have Codex call it.
+</Warning>
+
+<Warning>
+**Skipping validation.** A skill without validation is just a prompt library. A real workflow skill should say how to prove the result worked.
+</Warning>
+
+## Final Checklist
+
+- [ ] The skill is based on repeated real work.
+- [ ] The name is lowercase kebab-case.
+- [ ] The metadata description clearly states when to use the skill.
+- [ ] `SKILL.md` contains only the core workflow and safety rules.
+- [ ] Deterministic or fragile steps are moved into scripts.
+- [ ] Long or conditional details are moved into references.
+- [ ] Assets are stored separately from instructions.
+- [ ] The skill explains what not to do.
+- [ ] Validation prompts have been tried against realistic tasks.
+- [ ] The skill does not contain private domains, keys, IDs, or local user paths.
+
+## What To Remember
+
+A Codex skill is a compression tool for workflow knowledge. It turns "please remember how I like this done" into a local, triggerable, validated operating procedure. The skill should be short enough to load quickly, strict enough to prevent repeated mistakes, and concrete enough to produce the same quality every time.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">skills</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">workflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">agents</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">codex goal</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">takenotes publishing workflow</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">safe git collaboration</span>
+      </div>
+    </div>
+  </Card>
+</div>
