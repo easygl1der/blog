@@ -458,18 +458,19 @@ The main testing target is the planner, reranker, and citation flow. The smaller
 
 ## What Was Actually Replicated
 
-| Capability | Current Status | Notes |
-| --- | --- | --- |
-| Real-time search | Working MVP | Uses an external or self-hosted search provider for recall |
-| Search planning | Working MVP | Planner can split or focus queries |
-| Domain filtering | Working MVP | Good enough for official-source tests |
-| Page reading | Working MVP | Crawler/open-url path reads selected pages |
-| Source chunking | Working MVP | Evidence chunks get stable IDs |
-| Citations | Working MVP | Chunk citation detection exists |
-| Reranking | Basic | Rule-based; needs semantic reranking |
-| Agent loop | Early | Tool schema exists, but not a full autonomous loop |
-| Streaming | Not done | Future facade work |
-| OpenAI-compatible API facade | Not done | LangFlow run API works, but `/v1/search` and `/v1/chat/completions` facade is separate work |
+| Capability | Current Status | Replication Level | Notes |
+| --- | --- | --- | --- |
+| Real-time search | Working MVP | Medium | Uses an external or self-hosted search provider for recall, not a proprietary web index |
+| Search planning | Working MVP | Medium-high | Planner can split broad questions into focused queries |
+| Domain filtering | Working MVP | Medium-high | Allowlists and denylists work for official-source tests |
+| Language, region, and recency filters | Partial | Low-medium | Provider capability mapping is not complete |
+| Page reading | Working MVP | Medium-high | Crawler/open-url path reads selected HTML and PDF pages |
+| Source chunking | Working MVP | Medium-high | Evidence chunks get stable IDs such as `[1.1]` |
+| Citations | Working MVP | Medium | Chunk citation detection exists, but claim-level support checking is still separate work |
+| Reranking | Basic | Low-medium | Rule-based scoring works; semantic or listwise reranking is still needed |
+| Agent loop | Early | Low-medium | Tool schemas and traces exist, but not a full autonomous loop |
+| Streaming | Not done | Low | Future facade work after non-streaming validation is stable |
+| OpenAI-compatible API facade | Not done | Low-medium | LangFlow run API works, but `/v1/search` and `/v1/chat/completions` facade is separate work |
 
 <Info>
 The current milestone is "Perplexity-like answer engine: working MVP." It is not yet "Perplexity-grade search engine."
@@ -566,6 +567,56 @@ What does Firecrawl provide for web scraping and LLM-ready content extraction? A
 ```
 
 Checks whether chunk IDs such as `[1.1]` or `[2.1]` appear and whether citation warnings stay empty.
+
+### Evidence Humility
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Compare Exa and SearXNG specifically for LangFlow integration. Only use official documentation."
+    }
+  ],
+  "search_domain_filter": [
+    "docs.exa.ai",
+    "docs.searxng.org",
+    "docs.langflow.org"
+  ],
+  "max_results": 5
+}
+```
+
+Checks whether the system admits insufficient evidence instead of inventing integration details when official sources are thin.
+
+### Deny Filtering
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Find reliable documentation for building web search agents with LangFlow."
+    }
+  ],
+  "search_domain_filter": [
+    "-reddit.com",
+    "-medium.com",
+    "-pinterest.com"
+  ],
+  "max_results": 8
+}
+```
+
+Checks whether low-signal domains are excluded before crawling and whether the answer still uses grounded evidence.
+
+### Open-Source Research
+
+```text
+Research open-source alternatives to Perplexity AI. Compare Perplexica, Scira, Fireplexity, and Open Deep Research. Include citations.
+```
+
+Checks multi-source research behavior, table-style answer quality, source diversity, and citation coverage across project documentation and repositories.
 
 ### Chinese Answer With English Sources
 

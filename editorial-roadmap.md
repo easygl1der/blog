@@ -157,30 +157,32 @@ LangFlow API/MCP overlap status:
 - `2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis` has been folded into `2026-06-02-operate-langflow-flows-through-api-and-mcp` as the local long-flow operations section.
 - `2026-05-31-operate-langflow-flows-through-api-and-mcp` has been folded into `2026-06-02-operate-langflow-flows-through-api-and-mcp` as the canonical REST/MCP operations guide.
 
+Perplexity/Search overlap status:
+
+- `2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow` has been folded into `2026-06-02-recreate-perplexity-search-with-langflow` as the architecture, API surfaces, crawler, filter, and citation sections.
+- `2026-05-31-using-the-perplexity-like-langflow-search-flows` has been folded into `2026-06-02-recreate-perplexity-search-with-langflow` as the replication scorecard and expanded evaluation prompts.
+
 ## Next Writing Order
 
-1. Audit the May Perplexity notes and fold remaining unique material into `Recreate Perplexity Search With LangFlow`.
-2. Decide whether `Perplexity Computer` is a case study section under the research-agent pillar or a standalone interaction article.
-3. Create new notes only after the existing overlap has been resolved.
+1. Decide whether `Perplexity Computer` is a case study section under the research-agent pillar or a standalone interaction article.
+2. Create new notes only after the existing overlap has been resolved.
 
 ## Immediate Quality Pass
 
-Current target: Perplexity/Search overlap audit.
+Current target: Perplexity Computer placement decision.
 
 Why this is next:
 
 - `Operate LangFlow Flows Through API And MCP` now exists as the canonical API/MCP operations pillar.
-- The remaining duplication is mostly in the Perplexity/Search/RAG cluster.
-- The next pass should fold May Perplexity material into the June Perplexity pillar instead of creating another search article.
+- `Recreate Perplexity Search With LangFlow` now carries the remaining useful May Perplexity material.
+- The remaining open editorial question is whether `Perplexity Computer` should stay standalone or become a case study section under the research-agent pillar.
 
 Quality pass requirements:
 
-1. Compare `2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow` with `2026-06-02-recreate-perplexity-search-with-langflow`.
-2. Compare `2026-05-31-using-the-perplexity-like-langflow-search-flows` with `2026-06-02-recreate-perplexity-search-with-langflow`.
-3. Move only unique operational lessons into the June Perplexity pillar.
-4. Keep crawler responsibility details in `Crawler Reads URLs, Search Finds URLs`.
-5. Keep source-map and citation-validator details in `Source Maps, Chunk Citations, And Citation Validation`.
-6. Remove real domains, local paths, flow IDs, project IDs, API keys, and provider keys before publishing changes.
+1. Compare `2026-06-02-how-to-recreate-perplexity-computer-in-langflow` with `Recreate Perplexity Search With LangFlow`, `Deep Research Is An Orchestration Loop`, and `BrowserOS MCP`.
+2. If it is mostly an interaction case study, keep it standalone but add clearer links back to the search-agent pillars.
+3. If it mainly repeats search, browser, and agent orchestration material, fold unique sections into the existing pillars and stop adding more Perplexity Computer notes.
+4. Remove real domains, local paths, flow IDs, project IDs, API keys, and provider keys before publishing changes.
 
 ## Decision Rule For Future Notes
 
