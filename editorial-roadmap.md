@@ -164,25 +164,27 @@ Perplexity/Search overlap status:
 
 ## Next Writing Order
 
-1. Decide whether `Perplexity Computer` is a case study section under the research-agent pillar or a standalone interaction article.
-2. Create new notes only after the existing overlap has been resolved.
+1. Create new notes only after the existing overlap has been resolved.
+2. If adding more Computer-like agent content, update `How To Recreate Perplexity Computer In Langflow` as the case study instead of starting another Perplexity Computer article.
 
 ## Immediate Quality Pass
 
-Current target: Perplexity Computer placement decision.
+Current target: hold the current architecture and avoid new overlapping notes.
 
 Why this is next:
 
 - `Operate LangFlow Flows Through API And MCP` now exists as the canonical API/MCP operations pillar.
 - `Recreate Perplexity Search With LangFlow` now carries the remaining useful May Perplexity material.
-- The remaining open editorial question is whether `Perplexity Computer` should stay standalone or become a case study section under the research-agent pillar.
+- `Perplexity Computer` stays standalone as a Computer-like runtime case study, with links back to the search, Deep Research, and BrowserOS pillars.
 
 Quality pass requirements:
 
-1. Compare `2026-06-02-how-to-recreate-perplexity-computer-in-langflow` with `Recreate Perplexity Search With LangFlow`, `Deep Research Is An Orchestration Loop`, and `BrowserOS MCP`.
-2. If it is mostly an interaction case study, keep it standalone but add clearer links back to the search-agent pillars.
-3. If it mainly repeats search, browser, and agent orchestration material, fold unique sections into the existing pillars and stop adding more Perplexity Computer notes.
-4. Remove real domains, local paths, flow IDs, project IDs, API keys, and provider keys before publishing changes.
+1. New work should strengthen an existing pillar or case study unless it introduces a genuinely new system boundary.
+2. Keep search pipeline detail in `Recreate Perplexity Search With LangFlow`.
+3. Keep research-loop detail in `Deep Research Is An Orchestration Loop`.
+4. Keep browser automation setup in `BrowserOS MCP`.
+5. Keep Computer-like runtime design in `How To Recreate Perplexity Computer In Langflow`.
+6. Remove real domains, local paths, flow IDs, project IDs, API keys, and provider keys before publishing changes.
 
 ## Decision Rule For Future Notes
 
