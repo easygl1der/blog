@@ -1,0 +1,534 @@
+---
+title: "How To Recreate Perplexity Computer In Langflow"
+description: "A practical blueprint for building a Perplexity Computer-like system in Langflow by reusing existing search, evidence, citation, deep research, and agent-run tools."
+date: "2026-06-02"
+type: "guide"
+tags: [perplexity-computer, langflow, agent-orchestration, browser-automation, deep-research]
+status: "published"
+---
+
+# How To Recreate Perplexity Computer In Langflow
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">9 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Perplexity Computer 不是更强的搜索框，而是一个能规划任务、委派子任务、浏览网页、连接工具、生成产物、长期运行并保留审计轨迹的数字 worker。复刻它时，搜索层可以复用现有 Langflow Perplexity facade，真正要补的是 Computer orchestration runtime。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">perplexity-computer</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">agent-orchestration</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browser-automation</span>
+  </div>
+</div>
+
+## Summary
+
+Perplexity Computer 的核心不是单次回答，而是一个长期可运行的 agent runtime：接收目标，拆解工作，调用搜索、浏览器、代码、文件、连接器和报告生成子系统，最后产出可审阅结果。基于现有 Langflow 工具，最现实的路线是保留已经做好的 Perplexity-like search facade，把 Deep Research 升级成任务编排层，再接入 Browser Worker、Artifact Worker、Connector Worker 和审批安全层。
+
+---
+
+## What This Solves
+
+你已经有很多 Perplexity-like 搜索能力在 Langflow 里复刻了，所以问题不是再造一个 web search node。问题是如何把这些能力组合成一个类似 Perplexity Computer 的系统：它能做研究，也能真正执行多步任务。
+
+普通 LLM 或普通搜索流通常是：
+
+```text
+user question -> search -> answer with citations
+```
+
+Deep Research 是：
+
+```text
+goal -> clarification -> research plan -> search/open-url loop -> findings -> final report
+```
+
+Computer-like agent 要再往上走一层：
+
+```text
+goal
+-> task planner
+-> orchestrator
+-> search worker
+-> browser worker
+-> connector worker
+-> artifact worker
+-> reviewer / verifier
+-> deliverable
+-> audit trail
+```
+
+Perplexity 官方对 Computer 的定位是 general-purpose digital worker，能操作人类使用的界面，并创建和执行可持续数小时甚至数月的 workflows。它的产品页把 Computer 描述成能 research、code、browse、build、monitor、schedule、create、write、edit、connect、automate 的 worker，而不是聊天回答器。
+
+## Who This Is For
+
+这篇笔记是给未来要在 Langflow 里复刻 Perplexity Computer 的自己。前提是你已经有：
+
+- Langflow starter repo: `/Users/yitwah/Projects/langflow-starter-only`
+- Perplexity-like facade: `/Users/yitwah/Projects/perplexity-langflow-facade`
+- Deep Research MVP: `src/backend/base/langflow/deep_research/`
+- Langflow custom component: `deep_research_component.py`
+- 已经做好的 search、reader、citation、rerank、quality、agent-run smoke tests
+
+这意味着实现重点应从“怎么搜”转移到“怎么编排任务、执行网页动作、保存状态、校验结果、暴露进度”。
+
+## Prerequisites
+
+- 一个可调用的 LLM provider，用于 planner、orchestrator、reporter、verifier。
+- 现有 Perplexity facade，可提供 `/v1/search`、`/v1/chat/completions`、`/v1/agent/runs`。
+- Browser automation runtime，MVP 可选 Playwright 或 browser-use。
+- 文件和 artifact workspace，用于保存截图、下载文件、报告、JSON trace。
+- 安全边界：沙箱、域名策略、审批 gate、secret redaction、运行时限额。
+- Langflow 组件和 API 路由，用于在画布里调用 Computer run。
+
+## The Workflow
+
+### 1. 把产品能力拆成系统模块
+
+Perplexity Computer 的能力可以拆成七层：
+
+```text
+Computer Orchestrator
+Search / Evidence Worker
+Browser Worker
+Connector Worker
+Artifact Worker
+Verifier
+Run Store + Event Stream
+```
+
+每一层的职责要清楚：
+
+- `Computer Orchestrator`: 接收目标，拆任务，决定下一步，控制预算，判断是否完成。
+- `Search / Evidence Worker`: 复用你的 Perplexity facade，负责 search、reader、citation、claim validation。
+- `Browser Worker`: 打开网页，点击、输入、滚动、下载、截图、抽取页面结构。
+- `Connector Worker`: 对接 Gmail、Slack、Notion、Google Drive、Calendar、GitHub 等工具。
+- `Artifact Worker`: 生成报告、表格、Markdown、代码、网页、小应用、下载文件清单。
+- `Verifier`: 检查目标是否完成，验证页面状态、引用、文件存在性、输出格式。
+- `Run Store + Event Stream`: 保存 steps、screenshots、sources、artifacts、approvals、errors。
+
+<Info>
+Computer 的关键不是每个 worker 都很聪明，而是每一步都有明确输入、输出、状态和失败恢复路径。
+</Info>
+
+### 2. 复用已有 search facade，不要重新造搜索
+
+你的 `/Users/yitwah/Projects/perplexity-langflow-facade` 已经有这些能力：
+
+- `/v1/search`: provider fusion、Langflow Evidence Flow fallback、planner、domain policy、recency、filters。
+- `/v1/chat/completions`: providers-first grounded answer、extractive fallback、streaming metadata。
+- `/v1/agent/runs`: Perplexity Agent-like run object，包含 `web_search`、`open_url`、`evidence_evaluation`、`final_answer` step trace。
+- citation validation: 支持 source-level 和 chunk-level citations。
+- claim support validation: 本地检查回答中的 claim 是否被 source chunks 支持。
+- rerank、route policy、provider health、readiness、telemetry、related questions。
+
+所以 Computer MVP 不应该从 `DuckDuckGoInstantSearch` 开始。Deep Research 里的默认 search tool 应改成 facade adapter：
+
+```python
+class PerplexityFacadeSearch:
+    def __init__(self, base_url: str, api_key: str | None = None) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+
+    async def search(self, query: str, *, max_results: int = 5) -> list[Citation]:
+        payload = {
+            "query": query,
+            "max_results": max_results,
+            "search_backend": "providers-first",
+            "use_search_planner": True,
+            "return_related_questions": True,
+        }
+        data = await post_json(f"{self.base_url}/v1/search", payload, self.api_key)
+        return [
+            Citation(
+                title=item.get("title") or item.get("url") or "Untitled",
+                url=item.get("url") or "",
+                source=item.get("provider") or item.get("source") or "perplexity-facade",
+                snippet=item.get("snippet") or item.get("content") or "",
+            )
+            for item in data.get("results", [])
+        ]
+```
+
+Then Deep Research should accept:
+
+```text
+web_search = PerplexityFacadeSearch(PERPLEXITY_FACADE_URL)
+internal_search = LangChainRetrieverSearch(retriever)
+open_url = FacadeOpenURLOrJinaReader(...)
+```
+
+这样 Deep Research 的研究质量直接吃到你已有的 planner、rerank、reader、citation validation，而不是回退到弱搜索。
+
+### 3. 把 Deep Research 升级成 Computer Orchestrator
+
+当前 Deep Research MVP 已经有两层：
+
+```text
+ClarificationAgent
+PlanningAgent
+OrchestratorAgent
+ResearchAgent
+FinalReportAgent
+```
+
+它适合做 research report，但 Computer 需要更多 action 类型。建议扩展 plan step schema：
+
+```json
+{
+  "objective": "Audit my blog notes and produce a publish plan",
+  "steps": [
+    {
+      "id": "research_existing_notes",
+      "type": "research",
+      "question": "What topics already exist on the blog?",
+      "tools": ["search", "open_url"]
+    },
+    {
+      "id": "inspect_blog",
+      "type": "browser",
+      "goal": "Open the deployed blog and verify navigation pages",
+      "tools": ["browser.open", "browser.extract", "browser.screenshot"]
+    },
+    {
+      "id": "write_plan",
+      "type": "artifact",
+      "goal": "Create a Markdown editorial plan",
+      "tools": ["artifact.write_file"]
+    }
+  ],
+  "success_criteria": [
+    "All cited notes have valid URLs",
+    "The plan includes next actions",
+    "Screenshots or logs prove the deployed page is reachable"
+  ]
+}
+```
+
+Computer Orchestrator 的 loop 应该长这样：
+
+```text
+while run.status not in ["ready", "failed", "needs_approval"]:
+    state = load_run(run_id)
+    next_step = planner_or_orchestrator.decide(state)
+    if next_step.requires_approval:
+        pause_for_approval(next_step)
+    result = dispatch(next_step, workers)
+    append_event(run_id, result)
+    verification = verifier.check(state, result)
+    if verification.failed and can_retry:
+        append_repair_step()
+    if success_criteria_met:
+        finalize_artifacts()
+```
+
+<Tip>
+实现时不要做无限 autonomous loop。先做 bounded loop：`max_steps`、`max_minutes`、`max_browser_actions`、`max_cost_usd` 都要硬限制。
+</Tip>
+
+### 4. 浏览器 worker 先做 browser-lite
+
+复刻 Perplexity Computer 时，浏览器能力最容易变成不可控成本和不稳定来源。MVP 不要一上来做完整 desktop CUA，先做 browser-lite：
+
+```text
+open_url
+extract_page
+click
+fill
+select
+scroll
+download
+screenshot
+validate_page
+```
+
+可选实现路线：
+
+- Playwright: 最稳，适合你自己写 deterministic actions。
+- browser-use: 快速搭出 browser agent，开源 README 也支持自定义 tools、persistent browser CLI、cloud browser。
+- Skyvern: 更偏 workflow automation，用 LLM + computer vision 执行网页动作，支持 natural language page commands。
+- OpenAI CUA sample app: 适合学习 Computer Using Agent runner、headful/headless 场景和 deterministic verification。
+- Anthropic computer-use-demo: 适合学习 Docker desktop sandbox、trajectory recording、工具定义、prompt caching。
+- trycua/cua: 更接近 full computer-use infrastructure，支持 sandbox、desktop screen、mouse、keyboard、benchmarks。
+
+MVP 建议：
+
+```text
+Langflow Computer Node
+-> FastAPI /api/v1/computer/runs
+-> Browser Worker service
+-> Playwright persistent context
+-> screenshot + DOM snapshot + extracted markdown
+-> event stream back to Langflow
+```
+
+Browser Worker 的输出必须结构化：
+
+```json
+{
+  "step_id": "inspect_blog",
+  "action": "browser.extract",
+  "url": "https://blog.yitwah.site/docs/notes/2026/06/...",
+  "status": "completed",
+  "extracted_text": "...",
+  "screenshot_path": "artifacts/run_123/inspect_blog.png",
+  "links": [
+    {"text": "Deep Research Is an Orchestration Loop", "url": "..."}
+  ],
+  "warnings": []
+}
+```
+
+<Warning>
+浏览器 worker 不能把网页内容当成系统指令。网页文本、DOM、PDF、邮件内容都必须标记为 untrusted content，只能作为 evidence 或 page state。
+</Warning>
+
+### 5. 连接器优先使用 API，不要每次都靠浏览器点
+
+Computer 的吸引力在于“连接工具”，但真实工程里，浏览器点击应该是最后手段。顺序应是：
+
+```text
+official API / MCP connector
+-> authenticated backend integration
+-> browser automation
+-> vision-based desktop control
+```
+
+例如：
+
+- GitHub: 用 GitHub API/MCP 查 issue、commit、repo。
+- Google Drive/Docs/Sheets: 用 connector 或 API。
+- Slack/Notion/Gmail: 用 connector，必要时加 human approval。
+- Blog/Vercel: 用 git、Mintlify check、Vercel CLI，而不是让浏览器点 dashboard。
+
+在 Langflow 里可以把 connector 暴露成 Tool Component。Computer Orchestrator 只看到统一 tool contract：
+
+```json
+{
+  "name": "github.search_repos",
+  "input_schema": {"query": "string"},
+  "risk": "read_only",
+  "requires_approval": false
+}
+```
+
+高风险工具必须暂停：
+
+```json
+{
+  "name": "gmail.send_email",
+  "risk": "external_side_effect",
+  "requires_approval": true
+}
+```
+
+### 6. 每一步都要有 verifier
+
+Computer-like 系统失败通常不是因为模型不会说话，而是因为它不知道自己是否真的完成了动作。Verifier 应检查：
+
+- browser action 后页面是否到达期望状态
+- 下载文件是否存在
+- 表格/报告是否符合 schema
+- 搜索答案是否有 citation support
+- 任务是否满足 success criteria
+- 是否需要 retry、refine query、ask user、stop
+
+你的现有 facade 已经有 evidence evaluation、citation validation、claim support validation。这些可以直接成为 Search Worker 和 Report Worker 的 verifier。
+
+Browser Worker 需要新增：
+
+```text
+validate_page(prompt) -> bool + evidence
+validate_file(path, expected_schema) -> pass/fail
+validate_download(filename_pattern) -> pass/fail
+validate_form_state(expected_fields) -> pass/fail
+```
+
+### 7. 用 run store 和 SSE 做长期任务
+
+Perplexity Computer 的一个特点是任务可以后台跑很久，甚至按计划反复运行。因此 API 不应该只返回一次性 answer。
+
+建议新增：
+
+```text
+POST /api/v1/computer/runs
+GET  /api/v1/computer/runs
+GET  /api/v1/computer/runs/{run_id}
+POST /api/v1/computer/runs/{run_id}/approve
+POST /api/v1/computer/runs/{run_id}/cancel
+GET  /api/v1/computer/runs/{run_id}/events
+```
+
+Run state:
+
+```json
+{
+  "id": "computer_run_123",
+  "status": "running",
+  "goal": "Research agent orchestration repos and draft a blog note",
+  "plan": [],
+  "events": [],
+  "steps": [],
+  "artifacts": [],
+  "approvals": [],
+  "sources": [],
+  "warnings": [],
+  "budget": {
+    "max_steps": 30,
+    "max_minutes": 20,
+    "max_browser_actions": 80
+  }
+}
+```
+
+Langflow UI 里可以先做一个 Computer Run Component，输入 goal、预算、是否允许浏览器、是否允许 connectors，输出 final artifact、event trace、sources、screenshots。
+
+### 8. 给 Langflow 画布的最小组件设计
+
+先做四个组件就够：
+
+```text
+Computer Planner
+Computer Run
+Perplexity Facade Search
+Browser Worker Tool
+```
+
+实际画布可以是：
+
+```text
+Chat Input
+-> Computer Planner
+-> Computer Run
+   -> Perplexity Facade Search
+   -> Deep Research Engine
+   -> Browser Worker Tool
+   -> Artifact Writer
+-> Chat Output / File Output
+```
+
+也可以先把大部分逻辑放在 backend API，Langflow 组件只是薄 wrapper：
+
+```python
+class ComputerRunComponent(Component):
+    display_name = "Computer Run"
+
+    async def run(self) -> Data:
+        response = await post_json(
+            f"{self.base_url}/api/v1/computer/runs",
+            {
+                "goal": self.goal,
+                "max_steps": self.max_steps,
+                "enable_browser": self.enable_browser,
+                "enable_connectors": self.enable_connectors,
+            },
+        )
+        return Data(data=response)
+```
+
+<Tip>
+MVP 阶段应该让 Langflow 节点保持薄。复杂状态机放 backend；画布负责组合、配置和展示。
+</Tip>
+
+### 9. 先做三个可验收场景
+
+不要用“像 Perplexity Computer 一样什么都能做”作为验收。先做三个固定场景：
+
+1. Research-to-report
+
+```text
+Goal: 调查某个技术主题，搜索资料，打开来源，生成带引用报告。
+Expected: final_report + citations + source trace。
+```
+
+2. Browser inspection
+
+```text
+Goal: 打开一个部署页面，检查导航、标题、链接、截图。
+Expected: screenshot + extracted links + pass/fail verifier。
+```
+
+3. Publish workflow assistant
+
+```text
+Goal: 根据研究结果生成博客 MDX，更新导航，运行校验，给出部署状态。
+Expected: artifact files + validation logs + preview URL。
+```
+
+这三个场景正好覆盖你的现有资产：Perplexity facade、Deep Research、blog/takenotes、Vercel deployment、browser verification。
+
+## Common Failure Modes
+
+<Warning>
+不要把 Computer 当作“一个更长的 prompt”。如果没有 run store、event trace、approval gate、artifact workspace 和 verifier，它只是一个更难调试的 agent chat。
+</Warning>
+
+<Warning>
+不要让 browser worker 直接处理所有任务。能用 API/MCP/connector 的地方优先用结构化工具。浏览器适合没有 API、需要视觉验证、需要交互式页面状态的任务。
+</Warning>
+
+<Warning>
+不要让网页内容覆盖系统指令。浏览器抽取到的内容必须作为 untrusted evidence，不能直接拼进 developer/system prompt。
+</Warning>
+
+<Warning>
+不要默认允许外部副作用。发邮件、下单、提交表单、写入远程系统、删除文件、改 DNS、部署生产环境，都应该需要 human approval。
+</Warning>
+
+<Warning>
+不要忽略成本和时间预算。Computer 任务天然会变长，必须有 `max_steps`、`max_browser_actions`、`timeout_seconds`、`max_cost` 和 cancel API。
+</Warning>
+
+## Open Source References
+
+- [Perplexity Computer](https://www.perplexity.ai/products/computer): 官方产品页强调 Computer 是 general-purpose digital worker，能执行长期 workflows。
+- [browser-use](https://github.com/browser-use/browser-use): 开源 browser agent，适合快速做 browser worker；支持自定义 tools、persistent browser CLI、cloud browser。
+- [OpenAI CUA sample app](https://github.com/openai/openai-cua-sample-app): 学习 Computer Using Agent runner、多环境和 deterministic verification。
+- [Anthropic computer-use-demo](https://github.com/anthropics/claude-quickstarts/tree/main/computer-use-demo): 学习 Docker desktop sandbox、X11/VNC、trajectory recording、工具定义。
+- [trycua/cua](https://github.com/trycua/cua): open-source infrastructure for Computer-Use Agents，支持 sandboxes、desktop control、benchmarks。
+- [Skyvern](https://github.com/Skyvern-AI/skyvern): 用 LLM 和 computer vision 自动化 browser workflows，适合参考 workflow automation 和 AI-augmented Playwright。
+
+## Final Checklist
+
+- [ ] Deep Research 的默认 web search 从 DuckDuckGo fallback 替换为 Perplexity facade adapter。
+- [ ] 新增 `/api/v1/computer/runs`，返回 run id、status、plan、steps、artifacts、sources。
+- [ ] 新增 SSE event stream，前端或 Langflow 组件能看到每一步状态。
+- [ ] Browser Worker 支持 open、extract、click、fill、download、screenshot、validate。
+- [ ] 所有高风险 connector 和 browser action 都有 approval gate。
+- [ ] 每个 worker 输出结构化 JSON，不把网页内容当作 trusted instruction。
+- [ ] Verifier 能检查 evidence、citations、page state、file existence、schema。
+- [ ] 三个 MVP 场景能跑通：research report、browser inspection、publish assistant。
+- [ ] smoke tests 覆盖 planner、search adapter、browser worker fake、approval pause、artifact output。
+
+## What To Remember
+
+Perplexity-like search 已经是你的现有资产，不要重复造。要复刻 Perplexity Computer，下一步要做的是把 search/evidence 变成一个 worker，把 Deep Research 变成 Computer Orchestrator，再加 browser worker、artifact worker、connector worker、verifier、run store 和 approval gate。
+
+最小可行版本不是“全能电脑代理”，而是：
+
+```text
+bounded orchestration loop
++ your existing Perplexity facade
++ browser-lite worker
++ artifacts
++ verifier
++ event stream
++ approval gates
+```
+
+做到这一步，Langflow 里就不只是有 Perplexity-style answer，而是有一个可追踪、可暂停、可验收的 Computer-like workflow runtime。
+
+---
+
+## Metadata
+
+<Card title="Quick Reference">
+  **Type:** guide  
+  **Tags:** perplexity-computer · langflow · agent-orchestration · browser-automation · deep-research  
+  **Related:** [[Deep Research Is an Orchestration Loop]] · [[Build A Perplexity-Like Web Search Flow In Langflow]]
+</Card>
