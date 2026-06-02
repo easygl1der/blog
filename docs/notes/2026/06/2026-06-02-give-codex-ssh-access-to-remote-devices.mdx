@@ -1,0 +1,347 @@
+---
+title: "Give Codex SSH Access To Remote Devices"
+description: "A beginner-friendly guide to connecting Codex to a remote Mac, VPS, or other machine over SSH with Tailscale and safe SSH aliases."
+date: "2026-06-02"
+type: "guide"
+tags: [ssh, tailscale, codex, remote-access]
+status: "published"
+---
+
+# Give Codex SSH Access To Remote Devices
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-02</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">11 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Codex can operate remote machines safely and repeatably once your local computer can SSH to them through stable aliases such as <code>ssh macmini</code> and <code>ssh vps</code>.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ssh</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">tailscale</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">remote-access</span>
+  </div>
+</div>
+
+## Summary
+
+This guide shows how to let Codex access your remote Mac, VPS, or Linux machine through SSH without sharing passwords in normal use. The final state is simple: from the computer where Codex runs, commands like `ssh macmini` and `ssh vps` should log in directly, and Codex can then inspect files, run commands, deploy services, or debug logs on those machines.
+
+The clean setup uses three layers: Tailscale for private networking, SSH keys for authentication, and `~/.ssh/config` aliases for readable host names. If a proxy app breaks Tailscale routes, add an explicit route for the Tailscale device or configure the proxy to exclude the Tailscale network.
+
+---
+
+## What This Solves
+
+Codex can only SSH to machines that the local computer can already reach. If you want Codex to manage a remote Mac mini, a VPS, or a self-hosted server, first make the local shell able to run commands like this:
+
+```bash
+ssh macmini 'whoami; hostname; pwd'
+ssh vps 'whoami; hostname; pwd'
+```
+
+Once those work, Codex can use the same aliases. This avoids pasting passwords repeatedly, avoids exposing public ports unnecessarily, and gives you a stable workflow for future remote operations.
+
+## Who This Is For
+
+This is for someone starting from zero who wants an AI coding agent running on their laptop to access remote devices over SSH.
+
+You do not need deep networking knowledge. You do need enough control over each target machine to enable SSH, install Tailscale if needed, and add one SSH public key to the right user's `authorized_keys` file.
+
+## Prerequisites
+
+- A local computer where Codex runs, such as a MacBook.
+- A remote target, such as a Mac mini, Ubuntu VPS, or other Linux server.
+- Tailscale installed and logged in on the local computer and each remote target.
+- SSH enabled on each target.
+- A local SSH key such as `~/.ssh/id_ed25519`.
+- Admin access on the local computer if you need to fix proxy route conflicts.
+
+<Warning>
+Never paste private keys into chat or store passwords in notes. Share only public keys, such as `~/.ssh/id_ed25519.pub`. If you typed a real password during setup, change it after SSH key login works.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Create or confirm a local SSH key">
+    On the local computer where Codex runs, check whether an SSH key already exists:
+
+    ```bash
+    ls -la ~/.ssh
+    ```
+
+    If there is no `id_ed25519` key, create one:
+
+    ```bash
+    ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -C "codex-remote-access"
+    ```
+
+    The private key stays local at `~/.ssh/id_ed25519`. The public key is safe to copy:
+
+    ```bash
+    cat ~/.ssh/id_ed25519.pub
+    ```
+  </Step>
+
+  <Step title="Enable SSH on a remote Mac">
+    On the remote Mac, open:
+
+    ```text
+    System Settings -> General -> Sharing -> Remote Login
+    ```
+
+    Turn on `Remote Login`. If macOS asks who may connect, choose the specific local macOS account that Codex should use. For example, if the account is `demo`, the SSH command will look like this:
+
+    ```bash
+    ssh demo@100.80.10.20
+    ```
+
+    The username is the macOS login account on the remote Mac, not the name of your laptop.
+  </Step>
+
+  <Step title="Enable SSH on a VPS">
+    Most Linux VPS images already run OpenSSH. If not, install and start it from the VPS console:
+
+    ```bash
+    sudo apt update
+    sudo apt install -y openssh-server
+    sudo systemctl enable --now ssh
+    sudo systemctl status ssh
+    ```
+
+    Confirm the intended login user. Common examples are `ubuntu`, `debian`, `root`, or a custom user such as `demo`.
+  </Step>
+
+  <Step title="Connect all devices with Tailscale">
+    Install Tailscale on the local computer and every remote target. Log them into the same tailnet.
+
+    On a Linux VPS, a typical install is:
+
+    ```bash
+    curl -fsSL https://tailscale.com/install.sh | sh
+    sudo tailscale up
+    ```
+
+    On macOS, install the Tailscale app, sign in, and copy the target's Tailscale IPv4 address. Tailscale addresses usually look like:
+
+    ```text
+    100.80.10.20
+    100.90.20.30
+    ```
+
+    These are private tailnet addresses. They are not normal public internet IPs.
+  </Step>
+
+  <Step title="Test raw SSH before creating aliases">
+    From the local computer, test each device directly:
+
+    ```bash
+    ssh demo@100.80.10.20
+    ssh demo@100.90.20.30
+    ```
+
+    If SSH asks whether to trust the host key, type `yes`. If it asks for a password, enter the password for that remote user one time.
+
+    Then verify identity:
+
+    ```bash
+    whoami
+    hostname
+    pwd
+    exit
+    ```
+  </Step>
+
+  <Step title="Install the local public key on the remote target">
+    After one password login works, add the local public key to the remote user. The manual method is:
+
+    ```bash
+    cat ~/.ssh/id_ed25519.pub
+    ```
+
+    Copy the full output line, then on the remote machine append it to:
+
+    ```bash
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    nano ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    ```
+
+    Or use this one-command pattern from the local machine, replacing the user and IP:
+
+    ```bash
+    ssh demo@100.90.20.30 'umask 077; mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys'
+    cat ~/.ssh/id_ed25519.pub | ssh demo@100.90.20.30 'cat >> ~/.ssh/authorized_keys'
+    ```
+
+    After this, a password should no longer be needed.
+  </Step>
+
+  <Step title="Create readable SSH aliases">
+    Edit the local SSH config:
+
+    ```bash
+    nano ~/.ssh/config
+    ```
+
+    Add aliases like this:
+
+    ```sshconfig
+    Host macmini
+      HostName 100.80.10.20
+      User demo
+      IdentityFile ~/.ssh/id_ed25519
+      IdentitiesOnly yes
+
+    Host vps
+      HostName 100.90.20.30
+      User demo
+      IdentityFile ~/.ssh/id_ed25519
+      IdentitiesOnly yes
+    ```
+
+    Now the important commands are short and memorable:
+
+    ```bash
+    ssh macmini
+    ssh vps
+    ```
+  </Step>
+
+  <Step title="Verify that Codex can use the aliases">
+    In the same local environment where Codex runs, test non-interactively:
+
+    ```bash
+    ssh -o BatchMode=yes -o ConnectTimeout=8 macmini 'whoami; hostname; pwd'
+    ssh -o BatchMode=yes -o ConnectTimeout=8 vps 'whoami; hostname; pwd'
+    ```
+
+    A good result looks like:
+
+    ```text
+    demo
+    example-mac-mini.local
+    /Users/demo
+    ```
+
+    or:
+
+    ```text
+    demo
+    example-vps
+    /home/demo
+    ```
+
+    If those commands pass, Codex can access the targets through SSH.
+  </Step>
+</Steps>
+
+## Common Failure Modes
+
+<Warning>
+`Permission denied (publickey,password)` means the network path reached SSH, but the remote account does not trust the local public key yet. Add `~/.ssh/id_ed25519.pub` to the remote user's `~/.ssh/authorized_keys`.
+</Warning>
+
+<Warning>
+`Operation timed out` usually means a routing or firewall problem. First test the port:
+
+```bash
+nc -vz -w 8 100.90.20.30 22
+```
+
+If the port does not open, verify Tailscale is connected on both machines and SSH is running on the target.
+</Warning>
+
+<Warning>
+Proxy and VPN apps can steal Tailscale routes. If opening a proxy app makes `ssh macmini` fail, check where the Tailscale IP is routed:
+
+```bash
+route -n get 100.80.10.20
+```
+
+The route should use the Tailscale interface, often named `utun4` on macOS. If it goes through a normal Wi-Fi gateway such as `en0`, the proxy is overriding the tailnet route.
+</Warning>
+
+<Tip>
+For proxy clients such as Shadowrocket, do not assume that a rule like `IP-CIDR,100.64.0.0/10,DIRECT` will hand traffic back to Tailscale. In some clients, `DIRECT` means "send through the physical network interface," which can still bypass Tailscale. Prefer a real excluded route or bypass setting for `100.64.0.0/10`.
+</Tip>
+
+<Tip>
+If the proxy client cannot exclude Tailscale routes cleanly, add a temporary host route on macOS:
+
+```bash
+sudo route add -host 100.80.10.20 -interface utun4
+sudo route add -host 100.90.20.30 -interface utun4
+```
+
+Replace `utun4` with the actual Tailscale interface from `ifconfig` or your route table. This fix can disappear after rebooting, reconnecting VPNs, or restarting Tailscale.
+</Tip>
+
+<Info>
+Tailscale uses the `100.64.0.0/10` address range. Example tailnet IPs such as `100.80.10.20` and `100.90.20.30` are sample values for teaching. Use the actual Tailscale IPs shown in your Tailscale app or admin console.
+</Info>
+
+## Final Checklist
+
+- [ ] The local computer has an SSH key at `~/.ssh/id_ed25519`.
+- [ ] Each remote target has SSH enabled.
+- [ ] Each remote target is connected to the same Tailscale network.
+- [ ] The local public key is in the remote user's `~/.ssh/authorized_keys`.
+- [ ] `~/.ssh/config` has aliases such as `macmini` and `vps`.
+- [ ] `ssh -o BatchMode=yes macmini 'whoami; hostname; pwd'` works.
+- [ ] `ssh -o BatchMode=yes vps 'whoami; hostname; pwd'` works.
+- [ ] If a proxy app is running, Tailscale target IPs still route through the Tailscale interface.
+
+## What To Remember
+
+Codex does not need a special remote-access product. It needs the local shell to have reliable SSH access. The durable pattern is:
+
+```text
+Tailscale private IP -> SSH key authentication -> ~/.ssh/config alias -> Codex uses ssh alias
+```
+
+When troubleshooting, separate the problem into layers. `nc` or `ssh -vvv` tells you whether the port is reachable. `Permission denied` means authentication. `Operation timed out` means routing, firewall, or service availability. `route -n get` tells you whether a proxy app has stolen the path away from Tailscale.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-02</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ssh</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">tailscale</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">remote-access</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">SSH key management</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Tailscale routing</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Remote Codex workflows</span>
+      </div>
+    </div>
+  </Card>
+</div>
