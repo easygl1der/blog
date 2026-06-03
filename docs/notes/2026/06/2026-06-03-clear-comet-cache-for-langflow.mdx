@@ -1,0 +1,153 @@
+---
+title: "Clear Comet Cache for Langflow"
+description: "A practical checklist for clearing stale Langflow UI state in Comet before escalating to Langflow or Python cache cleanup."
+date: "2026-06-03"
+type: "guide"
+tags: [langflow, comet, browser-cache, troubleshooting]
+status: "published"
+---
+
+# Clear Comet Cache for Langflow
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-03</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">4 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    When Langflow looks stale inside Comet, clear the browser's site data first, then restart Langflow only if the UI still reflects old state.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">comet</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browser-cache</span>
+  </div>
+</div>
+
+## Summary
+
+If Langflow behaves as if an old flow, component, or UI bundle is still loaded in Comet, treat the problem in layers. Start by clearing Comet's site data for the exact Langflow origin, then hard-refresh the page, and only then move on to restarting Langflow or clearing local Python caches.
+
+---
+
+## What This Solves
+
+This guide solves the common case where Langflow appears stale in Comet: the page still shows old UI state, old flow metadata, or behavior from before a local restart. The successful outcome is a clean Langflow page load without unnecessarily clearing unrelated browser data or touching project files.
+
+## Who This Is For
+
+This is for someone running Langflow locally or through a remote URL and opening it in Comet. It assumes you can access the Langflow page and can restart the Langflow process if browser-side cleanup is not enough.
+
+## Prerequisites
+
+- Access to the Langflow page in Comet.
+- The exact URL you use for Langflow, such as `http://localhost:7860` or `http://127.0.0.1:7860`.
+- Terminal access if you need to restart the Langflow server.
+
+## The Workflow
+
+<Steps>
+  <Step title="Identify the exact Langflow origin">
+    Check the address bar before clearing anything. `localhost`, `127.0.0.1`, a LAN IP, and a public domain are separate browser origins, so Comet may cache each one independently.
+  </Step>
+  <Step title="Clear site data for only that Langflow origin">
+    In Comet, open the page's site settings from the address bar, then clear cookies and site data for the Langflow URL. This should remove cached localStorage, cookies, and browser-side state without affecting every site you use.
+  </Step>
+  <Step title="Hard-refresh the Langflow page">
+    Reload the page with `Cmd + Shift + R`. This forces Comet to re-fetch the app shell and assets instead of reusing a cached page load.
+  </Step>
+  <Step title="Repeat for alternate local URLs if needed">
+    If you sometimes open both `http://localhost:7860` and `http://127.0.0.1:7860`, clear site data for both. Browsers intentionally isolate these origins.
+  </Step>
+  <Step title="Restart Langflow only if the browser cleanup fails">
+    Stop the running Langflow process and start it again. Use the command that matches how you normally run it.
+
+```bash
+pkill -f langflow
+uv run langflow run
+```
+
+    If you do not use `uv`, start it directly:
+
+```bash
+langflow run
+```
+  </Step>
+  <Step title="Escalate to Python cache cleanup for custom code">
+    If the stale behavior comes from custom components or local Python code, inspect Python cache folders before deleting anything.
+
+```bash
+find . -name "__pycache__" -type d
+```
+  </Step>
+</Steps>
+
+<Tip>
+Start with Comet's per-site cache and a hard refresh. This keeps the fix targeted and avoids wiping unrelated browser sessions.
+</Tip>
+
+## Common Failure Modes
+
+<Warning>
+Clearing only `localhost` will not clear `127.0.0.1`. If you switch between both URLs, stale state can survive because each URL has its own site storage.
+</Warning>
+
+<Warning>
+Restarting Langflow will not always fix stale browser assets. If Comet is serving an old app shell, the server can be fresh while the page still behaves as if it is old.
+</Warning>
+
+<Warning>
+Avoid clearing global Comet profile data as the first step. It can remove unrelated cookies and sessions, while the Langflow problem usually only needs per-site cleanup.
+</Warning>
+
+## Final Checklist
+
+- [ ] Confirm the Langflow URL you are actually using.
+- [ ] Clear Comet site data for that exact origin.
+- [ ] Run a hard refresh with `Cmd + Shift + R`.
+- [ ] If using both `localhost` and `127.0.0.1`, clear both.
+- [ ] Restart Langflow only after browser cleanup fails.
+- [ ] Inspect Python cache folders only if custom components or code changes still do not load.
+
+## What To Remember
+
+Treat Langflow cache problems in layers. Browser origin state is the first layer, Langflow process state is the second, and Python/package cache is the last layer. Most Comet-specific stale UI issues are fixed before reaching the last layer.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-03</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">comet</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browser-cache</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">troubleshooting</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">LangFlow Systems</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Browser Cache Debugging</span>
+      </div>
+    </div>
+  </Card>
+</div>

@@ -40,6 +40,8 @@
                   {
                     "group": "LangFlow Systems",
                     "pages": [
+                      "docs/notes/2026/06/2026-06-03-clear-comet-cache-for-langflow",
+                      "docs/notes/2026/06/2026-06-03-optimize-langflow-with-postgresql-and-multi-worker-serialization",
                       "docs/notes/2026/06/2026-06-02-generate-a-whole-book-with-langflow",
                       "docs/notes/2026/06/2026-06-02-operate-langflow-flows-through-api-and-mcp",
                       "docs/notes/2026/06/2026-06-02-langflow-debugging-playbook"
