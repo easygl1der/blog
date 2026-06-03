@@ -1,0 +1,472 @@
+---
+title: "Optimize LangFlow With PostgreSQL And Multi-Worker Serialization"
+description: "A practical guide to speeding up LangFlow project loading, avoiding SQLite database locks, and running multiple workers behind PostgreSQL."
+date: "2026-06-03"
+type: "guide"
+tags: [langflow, postgresql, performance, docker, fastapi]
+status: "published"
+---
+
+# Optimize LangFlow With PostgreSQL And Multi-Worker Serialization
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-03</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">12 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Move LangFlow from a slow SQLite-backed single-worker setup to a PostgreSQL-backed multi-worker deployment with faster project serialization.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">postgresql</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">performance</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">docker</span>
+  </div>
+</div>
+
+## Summary
+
+LangFlow can become painfully slow when many large flows are stored in SQLite and the API has to serialize deeply nested project data through FastAPI's default response path. The durable fix is two-part: use PostgreSQL for concurrent database access, then return large Pydantic models through a faster JSON-mode serialization path.
+
+This note records one working deployment pattern: a custom LangFlow image, a PostgreSQL service, a one-time SQLite migration script, and six LangFlow workers configured through Docker Compose.
+
+---
+
+## What This Solves
+
+This guide targets two symptoms that often appear together in a growing LangFlow instance:
+
+- Opening workspaces or loading flow lists takes tens of seconds.
+- Increasing worker count causes `Database is locked` errors when SQLite is still the backing database.
+- Large project payloads, sometimes around 10 MB of nested nodes and edges, are expensive for FastAPI to recursively encode.
+- Concurrent workflow execution needs database behavior closer to a server database than a file database.
+
+The tested outcome in the source deployment was a large reduction in project API latency and stable six-worker operation after moving from SQLite to PostgreSQL.
+
+<Info>
+The exact latency numbers depend on flow size, hardware, LangFlow version, and reverse proxy setup. Treat the measurements here as operational evidence for one deployment, not a universal benchmark.
+</Info>
+
+## Who This Is For
+
+This is for someone self-hosting LangFlow with Docker who already has useful flow data and wants to keep it while improving throughput.
+
+It assumes you are comfortable with:
+
+- building a custom Docker image;
+- editing files copied into `site-packages` during image build;
+- running PostgreSQL in Compose;
+- using environment variables for LangFlow configuration;
+- validating the result through API latency, flow loading, and concurrent workflow runs.
+
+## Prerequisites
+
+- A working LangFlow deployment, originally using SQLite.
+- Docker and Docker Compose.
+- Access to the existing LangFlow data volume that contains `langflow.db`.
+- A backup of the SQLite database before migration.
+- Python 3.12 in the custom image.
+- LangFlow `1.9.5` or a version whose relevant paths match the patch.
+- PostgreSQL 16 or a compatible server.
+
+<Warning>
+Back up the LangFlow data volume before attempting the migration. The migration script truncates initialized PostgreSQL tables before copying SQLite rows, so it should only run against a fresh target database.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Understand the two bottlenecks">
+    The slow-loading problem and the lock problem come from different layers.
+
+    The loading bottleneck is response serialization. LangFlow project and flow objects can contain large nested JSON structures. If FastAPI recursively walks these objects through `jsonable_encoder`, a large flow list can spend most of its time in Python object conversion.
+
+    The concurrency bottleneck is SQLite. Multiple LangFlow workers are separate processes. SQLite is useful for a small single-process deployment, but it is a poor fit for concurrent workflow writes from several workers.
+  </Step>
+
+  <Step title="Add a faster response helper">
+    Create or overwrite `/usr/local/lib/python3.12/site-packages/langflow/utils/compression.py` inside the custom image:
+
+    ```python
+    import json
+
+    from fastapi.responses import Response
+
+
+    def compress_response(data_model):
+        """
+        Serialize Pydantic models through JSON mode and return a FastAPI Response.
+        """
+        if isinstance(data_model, list):
+            serialized_data = [item.model_dump(mode="json") for item in data_model]
+        else:
+            serialized_data = data_model.model_dump(mode="json")
+
+        json_str = json.dumps(serialized_data)
+        return Response(
+            content=json_str.encode("utf-8"),
+            media_type="application/json",
+        )
+    ```
+
+    This keeps the response body JSON-compatible while avoiding FastAPI's slower recursive conversion path for the patched endpoints.
+  </Step>
+
+  <Step title="Patch project route returns during image build">
+    Add a build-time script named `patch_projects.py`:
+
+    ```python
+    import re
+
+
+    file_path = "/usr/local/lib/python3.12/site-packages/langflow/api/v1/projects.py"
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    import_patch = "from langflow.utils.compression import compress_response\n"
+    if "compress_response" not in content:
+        content = import_patch + content
+
+    content_modified = re.sub(
+        r"return\s+project",
+        "return compress_response(project)",
+        content,
+    )
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content_modified)
+
+    print("LangFlow project serialization patch installed.")
+    ```
+
+    This is intentionally narrow: it targets project responses that contain the expensive nested payload.
+  </Step>
+
+  <Step title="Prepare a SQLite to PostgreSQL migration script">
+    Add `migrate_to_postgres.py` to copy existing rows after LangFlow has created the PostgreSQL schema:
+
+    ```python
+    import os
+    import sqlite3
+    import sys
+    import time
+
+    import psycopg2
+
+
+    sqlite_path = "/app/langflow/langflow.db"
+    postgres_url = "postgresql://langflow:langflow_pass@postgres:5432/langflow"
+    tables = ["user", "folder", "flow", "variable", "apikey", "message"]
+
+    if not os.path.exists(sqlite_path):
+        print("No SQLite database found; skipping migration.")
+        sys.exit(0)
+
+    conn_pg = None
+    for attempt in range(30):
+        try:
+            conn_pg = psycopg2.connect(postgres_url)
+            break
+        except Exception:
+            print(f"Waiting for PostgreSQL... ({attempt + 1}/30)")
+            time.sleep(2)
+
+    if not conn_pg:
+        print("Could not connect to PostgreSQL.")
+        sys.exit(1)
+
+    cur_pg = conn_pg.cursor()
+    conn_sl = sqlite3.connect(sqlite_path)
+    cur_sl = conn_sl.cursor()
+
+    for attempt in range(30):
+        try:
+            cur_pg.execute('SELECT 1 FROM "user" LIMIT 1')
+            break
+        except Exception:
+            conn_pg.rollback()
+            print("Waiting for LangFlow to initialize PostgreSQL tables...")
+            time.sleep(2)
+    else:
+        print("PostgreSQL schema was not initialized in time.")
+        sys.exit(1)
+
+    cur_pg.execute('SELECT count(*) FROM "flow"')
+    if cur_pg.fetchone()[0] > 0:
+        print("PostgreSQL already has flow data; skipping migration.")
+        sys.exit(0)
+
+    cur_pg.execute("SET session_replication_role = 'replica';")
+    for table in tables:
+        cur_pg.execute(f'TRUNCATE TABLE "{table}" CASCADE;')
+    cur_pg.execute("SET session_replication_role = 'origin';")
+    conn_pg.commit()
+
+    cur_pg.execute("SET session_replication_role = 'replica';")
+    for table in tables:
+        cur_sl.execute(f'SELECT * FROM "{table}"')
+        rows = cur_sl.fetchall()
+        if not rows:
+            print(f"SQLite table {table} is empty; skipping.")
+            continue
+
+        cur_sl.execute(f'PRAGMA table_info("{table}")')
+        cols = [column[1] for column in cur_sl.fetchall()]
+
+        cur_pg.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = %s AND data_type = 'boolean'
+            """,
+            (table,),
+        )
+        bool_cols = {row[0] for row in cur_pg.fetchall()}
+        bool_indices = [index for index, col in enumerate(cols) if col in bool_cols]
+
+        converted_rows = []
+        for row in rows:
+            values = list(row)
+            for index in bool_indices:
+                if values[index] is not None:
+                    values[index] = bool(values[index])
+            converted_rows.append(tuple(values))
+
+        col_names = ", ".join(f'"{col}"' for col in cols)
+        value_slots = ", ".join(["%s"] * len(cols))
+        query = (
+            f'INSERT INTO "{table}" ({col_names}) VALUES ({value_slots}) '
+            "ON CONFLICT DO NOTHING"
+        )
+        cur_pg.executemany(query, converted_rows)
+        print(f"Migrated {len(rows)} rows from {table}.")
+
+    cur_pg.execute("SET session_replication_role = 'origin';")
+    conn_pg.commit()
+    conn_sl.close()
+    conn_pg.close()
+    print("SQLite to PostgreSQL migration completed.")
+    ```
+
+    The important detail is boolean conversion. SQLite may store booleans as `0` and `1`, while PostgreSQL boolean columns expect boolean values.
+  </Step>
+
+  <Step title="Build a custom LangFlow image">
+    Put `compression.py`, `patch_projects.py`, and `migrate_to_postgres.py` next to this `Dockerfile`:
+
+    ```dockerfile
+    FROM python:3.12-slim
+
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        ffmpeg \
+        libcairo2-dev \
+        libpango1.0-dev \
+        pkg-config \
+        python3-dev \
+        fonts-noto-cjk \
+        fonts-noto-color-emoji \
+        texlive-latex-base \
+        texlive-latex-recommended \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        dvisvgm \
+        && rm -rf /var/lib/apt/lists/*
+
+    WORKDIR /app
+
+    RUN pip install --no-cache-dir \
+        langflow==1.9.5 \
+        langchain-openai \
+        manim \
+        psycopg2-binary
+
+    COPY compression.py /usr/local/lib/python3.12/site-packages/langflow/utils/compression.py
+    COPY patch_projects.py /app/patch_projects.py
+    RUN python3 /app/patch_projects.py && rm /app/patch_projects.py
+
+    COPY migrate_to_postgres.py /app/migrate_to_postgres.py
+
+    ENV LANGFLOW_HOST=0.0.0.0
+    ENV LANGFLOW_PORT=7860
+    ENV LANGFLOW_CONFIG_DIR=/app/langflow
+
+    EXPOSE 7860
+
+    CMD ["langflow", "run", "--host", "0.0.0.0", "--port", "7860"]
+    ```
+
+    Build the image:
+
+    ```bash
+    docker build -t langflow-custom:py3.12 .
+    ```
+  </Step>
+
+  <Step title="Run LangFlow with PostgreSQL and six workers">
+    Use Compose to run both services:
+
+    ```yaml
+    services:
+      langflow:
+        build: .
+        image: langflow-custom:py3.12
+        restart: always
+        ports:
+          - "7860:7860"
+        command:
+          - sh
+          - -c
+          - "(sleep 15 && python3 /app/migrate_to_postgres.py) & langflow run --host 0.0.0.0 --port 7860"
+        environment:
+          - LANGFLOW_HOST=0.0.0.0
+          - LANGFLOW_PORT=7860
+          - LANGFLOW_CONFIG_DIR=/app/langflow
+          - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow_pass@postgres:5432/langflow
+          - BACKEND_URL=https://langflow.example.com
+          - LANGFLOW_WORKERS=6
+          - LANGFLOW_DB_POOL_SIZE=20
+          - LANGFLOW_DB_MAX_OVERFLOW=10
+          - DO_NOT_TRACK=true
+        volumes:
+          - langflow_data:/app/langflow
+        depends_on:
+          postgres:
+            condition: service_healthy
+
+      postgres:
+        image: postgres:16-alpine
+        restart: always
+        environment:
+          - POSTGRES_USER=langflow
+          - POSTGRES_PASSWORD=langflow_pass
+          - POSTGRES_DB=langflow
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U langflow"]
+          interval: 5s
+          timeout: 5s
+          retries: 5
+
+    volumes:
+      langflow_data:
+        external: true
+        name: langflow-yitwah_langflow_data
+      postgres_data:
+    ```
+
+    Start the stack:
+
+    ```bash
+    docker compose up -d
+    ```
+
+    The command starts LangFlow immediately and launches the migration in the background after a short delay. The delay gives LangFlow time to initialize PostgreSQL tables.
+  </Step>
+
+  <Step title="Validate latency and concurrency">
+    Validate the result at three levels:
+
+    ```bash
+    docker compose logs -f langflow
+    ```
+
+    ```bash
+    curl --compressed -sS \
+      -H "x-api-key: $LANGFLOW_API_KEY" \
+      "$LANGFLOW_BASE_URL/api/v1/flows/?get_all=true" \
+      -o /tmp/langflow-flows.json
+    ```
+
+    ```bash
+    docker compose exec postgres psql -U langflow -d langflow -c 'SELECT count(*) FROM "flow";'
+    ```
+
+    Then open the LangFlow UI, load the largest project, and run several workflows at the same time. The desired result is no SQLite lock error, no repeated long project-list stalls, and stable worker behavior.
+  </Step>
+</Steps>
+
+## Common Failure Modes
+
+<Warning>
+`Database is locked` after increasing workers usually means LangFlow is still using SQLite. Confirm `LANGFLOW_DATABASE_URL` points to PostgreSQL inside the LangFlow container and that the process was restarted with that environment.
+</Warning>
+
+<Warning>
+If migration fails on boolean columns, SQLite integer values such as `0` and `1` may be reaching PostgreSQL boolean fields unchanged. Convert those values to Python `False` and `True` before `executemany`.
+</Warning>
+
+<Warning>
+If no data appears in PostgreSQL, the migration may have run before LangFlow created the schema. Check logs for the "Waiting for LangFlow to initialize PostgreSQL tables" message and adjust the startup delay or orchestration if needed.
+</Warning>
+
+<Warning>
+If the patch stops working after a LangFlow upgrade, inspect `langflow/api/v1/projects.py` again. Build-time source patches are version-sensitive and should be treated as operational patches, not stable public APIs.
+</Warning>
+
+<Tip>
+Keep `LANGFLOW_DB_POOL_SIZE` and `LANGFLOW_DB_MAX_OVERFLOW` aligned with worker count and expected workflow concurrency. Six workers with a pool size of 20 and overflow of 10 is a starting point, not a universal setting.
+</Tip>
+
+## Final Checklist
+
+- [ ] SQLite database and LangFlow data volume are backed up.
+- [ ] Custom image builds successfully with `langflow==1.9.5` and `psycopg2-binary`.
+- [ ] PostgreSQL healthcheck passes.
+- [ ] LangFlow starts with `LANGFLOW_DATABASE_URL` pointing to PostgreSQL.
+- [ ] Migration logs show rows copied from SQLite tables.
+- [ ] `SELECT count(*) FROM "flow";` returns the expected number of flows.
+- [ ] Project list and large project loading are materially faster.
+- [ ] Six concurrent workflow runs complete without `Database is locked`.
+
+## What To Remember
+
+There are two independent optimizations here. PostgreSQL fixes multi-worker database contention; faster Pydantic JSON-mode serialization fixes slow large-response encoding. Applying only one may leave the other bottleneck visible.
+
+Treat the source patch as a controlled deployment customization. It is useful when the operational bottleneck is real, but it should be reviewed after every LangFlow upgrade.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-03</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">postgresql</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">performance</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">docker</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fastapi</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">LangFlow Systems</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Self-Hosted AI Infrastructure</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Database Migration</span>
+      </div>
+    </div>
+  </Card>
+</div>
