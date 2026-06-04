@@ -74,6 +74,7 @@
                   {
                     "group": "Codex As Workflow Engine",
                     "pages": [
+                      "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
                       "docs/notes/2026/06/2026-06-03-use-codex-remote-projects-across-hosts",
                       "docs/notes/2026/06/2026-06-02-codex-goal",
                       "docs/notes/2026/06/2026-06-02-takenotes",

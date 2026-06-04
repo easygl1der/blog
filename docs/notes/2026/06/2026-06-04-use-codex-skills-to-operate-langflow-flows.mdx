@@ -1,0 +1,400 @@
+---
+title: "Use Codex Skills To Operate LangFlow Flows"
+description: "A Codex skill is the operating manual for an AI workflow, while a LangFlow flow is the executable graph that actually runs the pipeline."
+date: "2026-06-04"
+type: "guide"
+tags: [codex, langflow, ai-workflows, automation]
+status: "published"
+---
+
+# Use Codex Skills To Operate LangFlow Flows
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-04</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">9 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Use LangFlow for executable AI graphs, and use Codex skills to teach Codex when, why, and how to call those graphs safely.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-workflows</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+  </div>
+</div>
+
+## Summary
+
+A LangFlow flow is a runnable graph: it receives input, passes data through nodes, calls models or tools, and returns output. A Codex skill is not the graph; it is the instruction package that tells Codex how to recognize the task, prepare inputs, run scripts, call the right flow, validate the result, and explain the outcome.
+
+---
+
+## What This Solves
+
+When you already have LangFlow running on a domain, it is natural to ask whether a Codex skill is just another version of the same thing. It is not. The two pieces sit at different layers.
+
+LangFlow is the execution layer. It is where you build a concrete graph: prompt nodes, model nodes, retrievers, parsers, agents, tools, memory, API calls, and outputs. Once the graph exists, you can run it from the LangFlow UI or call it from Python through the LangFlow API.
+
+Codex skills are the operating layer. A skill tells Codex what to do around that graph: which flow to call, what input shape it expects, what files to inspect first, what Python runner to use, how to name output files, how to handle failed responses, and what checks prove the work is complete.
+
+<Info>
+The short version: LangFlow is the machine. A Codex skill is the manual, wrapper, and quality checklist Codex follows when using that machine.
+</Info>
+
+## Who This Is For
+
+This guide is for someone running self-hosted LangFlow and using Codex as an execution-oriented assistant. It assumes you want repeatable AI workflows, not just one-off chat answers.
+
+It is especially useful if you have flows like:
+
+- "Summarize a document and return structured JSON"
+- "Search the web, rank sources, and write a research brief"
+- "Extract invoice fields from text"
+- "Generate a book outline and expand each chapter"
+- "Classify support tickets and propose responses"
+- "Run a custom agent through LangFlow and save the result"
+
+In all of those cases, LangFlow owns the graph logic. Codex can own the surrounding workflow.
+
+## Prerequisites
+
+- A working LangFlow instance reachable over HTTPS, such as `https://langflow.example.com`
+- One or more LangFlow flows that can be called through the API
+- A LangFlow API key if your instance requires authentication
+- A Python environment with `requests` or `httpx`
+- A Codex skills directory, normally under `~/.codex/skills`
+- A clear input and output contract for the flow you want Codex to run
+
+<Warning>
+Do not put real API keys, private flow IDs, or private domains into public notes or reusable examples. Use environment variables for secrets and document the input contract separately.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Separate the execution graph from the operating instructions">
+    First decide what belongs in LangFlow and what belongs in the Codex skill. Put model chains, retrieval logic, parser nodes, tool calls, and graph routing inside LangFlow. Put file discovery, input preparation, API calling, output validation, naming rules, and reporting rules inside the Codex skill.
+  </Step>
+  <Step title="Define the LangFlow API contract">
+    Write down the flow endpoint, input type, output type, required environment variables, and the shape of the response. Codex needs this contract so it can call the flow without guessing.
+  </Step>
+  <Step title="Wrap the flow in a Python runner">
+    Put the actual API call in a small script. This keeps the fragile part deterministic and lets the skill tell Codex to run the script instead of rewriting HTTP code every time.
+  </Step>
+  <Step title="Create the Codex skill">
+    Add a `SKILL.md` that explains when the skill should activate, what files to inspect, which script to run, what inputs to pass, and how to validate the output.
+  </Step>
+  <Step title="Use Codex as the orchestrator">
+    When the user asks for that workflow, Codex reads the skill, prepares the input, runs the Python wrapper, checks the output, saves the result, and reports the important details.
+  </Step>
+</Steps>
+
+### Mental Model
+
+Use this split:
+
+| Layer | What It Is | What It Should Contain |
+| --- | --- | --- |
+| LangFlow flow | Runnable AI graph | Prompts, models, retrievers, tools, parsers, agents, routing |
+| Python runner | Deterministic API wrapper | Endpoint call, auth header, request payload, timeout, response parsing |
+| Codex skill | Operating instructions | Trigger rules, workflow steps, file conventions, validation rules, output expectations |
+| Codex chat/session | Human-facing execution | Inspect files, run scripts, summarize results, handle edge cases |
+
+### Why Not Put Everything In LangFlow?
+
+You can put a lot inside LangFlow, but some work is better outside the graph.
+
+LangFlow is strong when the task is a data pipeline: input comes in, nodes transform it, output comes out. Codex is stronger when the task involves a workspace: reading local files, choosing which artifact to process, editing a repo, running validation, committing changes, or explaining tradeoffs.
+
+For example, an invoice extraction flow can return JSON. But Codex can decide which PDF to process, run OCR first if needed, call the flow, compare line-item totals, save the JSON to the right folder, and tell you whether the output looks reliable.
+
+### Why Not Put Everything In A Codex Skill?
+
+A skill should not try to become a visual flow engine. It should not contain huge prompt chains, multi-node retrieval systems, or model-routing logic if LangFlow already handles that well.
+
+Skills work best when they are concise instructions and wrappers. If the workflow depends on a graph that you want to tune visually, share with others, or call from multiple clients, put that graph in LangFlow and let the skill call it.
+
+### Example Folder Layout
+
+A skill that operates a LangFlow document-summary flow might look like this:
+
+```text
+langflow-document-summary/
+├── SKILL.md
+├── scripts/
+│   └── run_flow.py
+└── references/
+    └── api-contract.md
+```
+
+The script performs the actual API request. The reference file documents the flow's expected inputs and outputs. The `SKILL.md` tells Codex when and how to use both.
+
+### Example Skill File
+
+```markdown
+---
+name: langflow-document-summary
+description: Use when the user wants Codex to summarize a local document by calling the configured LangFlow document-summary flow and saving a validated Markdown or JSON result.
+---
+
+# LangFlow Document Summary
+
+Use this skill when the user asks to summarize, extract, or structure a document through the team's LangFlow document-summary flow.
+
+## Workflow
+
+1. Locate the document the user wants processed.
+2. Extract plain text if the input is PDF, DOCX, HTML, or Markdown.
+3. Run `scripts/run_flow.py` with the extracted text.
+4. Validate that the response includes `summary`, `key_points`, and `open_questions`.
+5. Save the result under the requested output folder.
+6. Report the saved path and any validation concerns.
+
+## Environment
+
+Required variables:
+
+- `LANGFLOW_BASE_URL`
+- `LANGFLOW_API_KEY`
+- `LANGFLOW_FLOW_ID`
+
+Read `references/api-contract.md` if the response shape is unclear.
+```
+
+### Example API Contract
+
+```markdown
+# API Contract
+
+The flow receives one text input and returns a structured response.
+
+Required input:
+
+- `input_value`: full document text
+- `input_type`: `chat`
+- `output_type`: `chat`
+
+Expected output:
+
+- `summary`: short prose summary
+- `key_points`: list of important claims or facts
+- `open_questions`: list of unclear or missing items
+```
+
+### Example Python Runner
+
+```python
+import json
+import os
+import sys
+from pathlib import Path
+
+import requests
+
+
+def require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+def run_flow(input_text: str) -> dict:
+    base_url = require_env("LANGFLOW_BASE_URL").rstrip("/")
+    flow_id = require_env("LANGFLOW_FLOW_ID")
+    api_key = os.environ.get("LANGFLOW_API_KEY")
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["x-api-key"] = api_key
+
+    payload = {
+        "input_value": input_text,
+        "input_type": "chat",
+        "output_type": "chat",
+    }
+
+    response = requests.post(
+        f"{base_url}/api/v1/run/{flow_id}",
+        headers=headers,
+        json=payload,
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def main() -> None:
+    if len(sys.argv) != 3:
+        raise SystemExit("Usage: run_flow.py INPUT_TEXT_FILE OUTPUT_JSON_FILE")
+
+    input_path = Path(sys.argv[1])
+    output_path = Path(sys.argv[2])
+
+    result = run_flow(input_path.read_text(encoding="utf-8"))
+    output_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(output_path)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+This script is intentionally boring. That is the point. The flow can stay expressive and visual inside LangFlow, while the API call stays predictable and easy for Codex to run.
+
+### What Codex Does With The Skill
+
+Once the skill exists, the user can ask:
+
+```text
+Use the LangFlow document summary skill on this PDF and save the result.
+```
+
+Codex should then:
+
+1. Trigger the skill from its description.
+2. Read the skill body.
+3. Inspect the file.
+4. Extract text if needed.
+5. Run the Python wrapper.
+6. Check the output shape.
+7. Save the result.
+8. Tell the user what happened.
+
+That is different from asking LangFlow directly. LangFlow runs the graph. Codex manages the work around the graph.
+
+### What Can Be A Skill?
+
+A skill can be any repeatable operating pattern that Codex should learn for future work.
+
+Good skill candidates include:
+
+- Calling a specific LangFlow flow
+- Publishing a blog note with exact validation and deployment steps
+- Reviewing backend code with team-specific rules
+- Converting PDFs with a known OCR pipeline
+- Creating PowerPoint decks from a house template
+- Running a research workflow and enforcing citation checks
+- Preparing data for a recurring spreadsheet report
+- Applying a repo's testing and release checklist
+
+Weak skill candidates include:
+
+- One-off personal reminders
+- Generic facts Codex already knows
+- Large documentation dumps with no clear trigger
+- Scripts with no instructions about when to use them
+- Instructions that are so broad they activate for almost every request
+
+<Tip>
+A good skill has a narrow trigger, a concrete workflow, and a clear completion check.
+</Tip>
+
+### When A LangFlow Flow Should Become A Skill Wrapper
+
+Wrap a LangFlow flow in a Codex skill when at least one of these is true:
+
+- You call the same flow repeatedly from Codex.
+- The flow requires a specific input shape.
+- The output needs validation before it is trusted.
+- There are local files involved before or after the API call.
+- You need to save results into a repo or folder convention.
+- The workflow has secrets, environment variables, or deployment details Codex should handle carefully.
+- You want Codex to explain failures and recovery steps consistently.
+
+If the flow is only used inside the LangFlow UI, a Codex skill may not add much. If Codex is expected to operate the flow as part of real work, a skill is the right wrapper.
+
+### Practical Design Rule
+
+Use this rule:
+
+```text
+If it transforms data inside an AI pipeline, put it in LangFlow.
+If it tells Codex how to operate, validate, and file the work, put it in a skill.
+If it must be exact every time, put it in a script and let the skill call it.
+```
+
+This keeps each part honest.
+
+LangFlow remains the place for the graph. Python remains the place for deterministic execution. The skill remains the place for procedural knowledge.
+
+## Common Failure Modes
+
+<Warning>
+Putting secrets in the skill is a common mistake. Store API keys in environment variables and let the skill name the variables without exposing their values.
+</Warning>
+
+<Warning>
+Making the skill description too broad can cause it to trigger at the wrong time. The description should name the exact workflow, domain, flow, or artifact type it supports.
+</Warning>
+
+<Warning>
+Letting Codex rewrite API code every time makes failures harder to debug. Put the LangFlow request in a script and have Codex run that script.
+</Warning>
+
+<Warning>
+Trusting the flow response without validation is risky. The skill should define what fields, files, or checks prove that the output is usable.
+</Warning>
+
+<Warning>
+Mixing too much documentation into `SKILL.md` makes the skill expensive to load. Keep core steps in `SKILL.md` and move long contracts or examples into `references/`.
+</Warning>
+
+## Final Checklist
+
+- [ ] The LangFlow flow has a clear API endpoint and expected input shape.
+- [ ] Secrets are stored in environment variables, not written into the skill.
+- [ ] A Python script runs the flow with timeout and error handling.
+- [ ] `SKILL.md` explains when the skill should trigger.
+- [ ] The skill says exactly which script to run.
+- [ ] The skill defines the expected output and validation checks.
+- [ ] Any long API contract or response examples live in `references/`.
+- [ ] Codex can complete the workflow without asking the user to repeat setup details.
+
+## What To Remember
+
+A LangFlow flow is an executable graph. A Codex skill is a reusable operating procedure. Python is the reliable bridge between them.
+
+The best setup is not "skill versus LangFlow." It is "skill plus LangFlow": Codex recognizes the work, follows the skill, runs the Python wrapper, calls the LangFlow graph, validates the result, and reports the outcome.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-04</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">langflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-workflows</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">automation</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Codex skills</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">LangFlow API</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Python wrappers</span>
+      </div>
+    </div>
+  </Card>
+</div>
