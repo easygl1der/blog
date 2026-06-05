@@ -1,0 +1,180 @@
+---
+title: "Choose Next.js For AI Apps With Backend Work"
+description: "Use React plus Vite for lightweight UI prototypes, but choose Next.js plus Tailwind when an AI product needs backend routes, protected API keys, and research workflows."
+date: "2026-06-06"
+type: "guide"
+tags: [nextjs, react, vite, tailwind, ai-platform]
+status: "published"
+---
+
+# Choose Next.js For AI Apps With Backend Work
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-06</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">5 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Pick the frontend stack by asking whether the product is only a UI or whether it also needs backend control for AI calls.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">nextjs</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">react</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vite</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">tailwind</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-platform</span>
+  </div>
+</div>
+
+## Summary
+
+React plus Vite is the lighter path when the goal is a fast frontend prototype. Next.js is the better default when the product needs backend routes, protected API keys, server-side AI calls, saved history, or deep research workflows.
+
+The practical stack for an AI platform is usually Next.js plus Tailwind CSS: Next.js supplies the application and backend structure, while Tailwind helps translate a design mockup into consistent UI.
+
+---
+
+## What This Solves
+
+When starting from a visual UI, it is tempting to ask only "How do I make this frontend?" That question is too broad. The useful decision is whether the product is just a browser UI or a real AI application that must run trusted backend work.
+
+The split is simple:
+
+- React plus Vite is a lightweight frontend setup.
+- Next.js is a full React framework with routes and server-side application structure.
+- Tailwind CSS is a styling layer that can be used with either one.
+
+<Tip>
+If the app needs to hold API keys, call AI providers, run search, save research history, or stream long answers, choose Next.js first.
+</Tip>
+
+## Who This Is For
+
+This is for builders starting from a Paper, Figma, screenshot, or hand-drawn UI and deciding how to turn it into a working AI product.
+
+It is especially useful when the project starts as a Perplexity-style interface: a search composer, prompt suggestions, history, model selection, and backend calls to AI or research services.
+
+## Prerequisites
+
+- A UI design or mockup to implement
+- Basic familiarity with React components
+- A decision about whether the app is only a prototype or needs backend behavior
+- API keys kept outside browser code
+- Optional: Tailwind CSS if the visual design needs fast, consistent styling
+
+<Info>
+Tailwind CSS is not a complete application framework. It is a styling system. Use it with React plus Vite or with Next.js.
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="Start with the design">
+    Break the UI into components: sidebar, header, search composer, model selector, action buttons, history list, and account footer.
+  </Step>
+  <Step title="Ask whether the app needs backend work">
+    If the answer is no, React plus Vite is enough for a fast frontend prototype. If the answer is yes, move to Next.js.
+  </Step>
+  <Step title="Keep AI keys on the server">
+    Never put provider keys directly in browser code. The browser should call your own backend route, and that backend route should call OpenAI, Gemini, search APIs, scraping tools, or your database.
+  </Step>
+  <Step title="Use Next.js route handlers for AI calls">
+    Create backend routes for research, chat, search, or document generation. These routes can coordinate AI calls, retrieval, databases, and streaming responses.
+  </Step>
+  <Step title="Use Tailwind to match the UI">
+    Translate visual decisions into stable styling: spacing, type size, border radius, shadows, colors, and responsive layout.
+  </Step>
+  <Step title="Add deeper platform features later">
+    Once the static UI works, add saved sessions, auth, research history, upload flows, streaming output, and provider switching.
+  </Step>
+</Steps>
+
+The mental model looks like this:
+
+```txt
+User question
+  -> Next.js UI
+  -> backend route
+  -> AI provider / search / database
+  -> streamed answer
+  -> UI response
+```
+
+For a visual prototype, the model is smaller:
+
+```txt
+Paper UI
+  -> React components
+  -> Vite dev server
+  -> browser page
+```
+
+## Common Failure Modes
+
+<Warning>
+Putting API keys in frontend code is the main mistake. Browser code can be inspected by users, so provider keys must stay in server-side code or trusted backend infrastructure.
+</Warning>
+
+<Warning>
+Choosing React plus Vite for a full AI platform can lead to an extra backend project later. That is fine if you want separate services, but it is more moving parts than a single Next.js app for an early product.
+</Warning>
+
+<Warning>
+Treating Tailwind as the whole stack creates confusion. Tailwind answers "How do I style this?" not "Where do my backend routes, AI calls, auth, and database live?"
+</Warning>
+
+## Final Checklist
+
+- [ ] If the goal is only a UI demo, use React plus Vite.
+- [ ] If the product needs backend routes or protected API keys, use Next.js.
+- [ ] Use Tailwind CSS when you want to copy the design system quickly and consistently.
+- [ ] Keep AI provider keys out of browser code.
+- [ ] Add backend routes for research, chat, search, and streaming responses.
+- [ ] Add database, auth, and history only after the core UI and AI route work.
+
+## What To Remember
+
+React plus Vite is lighter. Next.js is more complete. For an AI platform, the backend matters early, so Next.js plus Tailwind CSS is the better default.
+
+The real question is not which stack is trendy. The question is where trusted work happens. If the product must call AI APIs, coordinate deep research, and protect credentials, put that work behind server routes.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-06</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">nextjs</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">react</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vite</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">tailwind</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-platform</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Paper UI to frontend</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">AI backend routes</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Frontend stack choice</span>
+      </div>
+    </div>
+  </Card>
+</div>

@@ -50,6 +50,7 @@
                   {
                     "group": "Search And Research Agents",
                     "pages": [
+                      "docs/notes/2026/06/2026-06-06-choose-next-js-for-ai-apps-with-backend-work",
                       "docs/notes/2026/06/2026-06-02-recreate-perplexity-search-with-langflow",
                       "docs/notes/2026/06/2026-06-02-deep-research-is-an-orchestration-loop",
                       "docs/notes/2026/06/2026-06-02-crawler-reads-urls-search-finds-urls",
