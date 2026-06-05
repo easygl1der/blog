@@ -1,0 +1,205 @@
+---
+title: "Compare Figma And Paper With Visual Workflow Diagrams"
+description: "A product comparison becomes more useful when it separates capability overlap from the workflow differences that change how teams ship UI."
+date: "2026-06-06"
+type: "guide"
+tags: [figma, paper, design-workflow, visual-notes]
+status: "published"
+---
+
+# Compare Figma And Paper With Visual Workflow Diagrams
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-06</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">7 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Compare design products by showing where their capabilities overlap and where their workflows force different handoffs.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">figma</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">paper</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">design-workflow</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">visual-notes</span>
+  </div>
+</div>
+
+## Summary
+
+Figma and Paper both sit in the product-design world, but their strongest claims point in different directions. Figma is the mature collaborative design suite; Paper is the code-native design canvas aimed at reducing the gap between design, web primitives, and agent-assisted implementation.
+
+The useful comparison is therefore not a feature checklist. It is a workflow map: where does the canvas live, who can act on it, and how much translation remains before something becomes production UI?
+
+---
+
+## What This Solves
+
+A product comparison often collapses into a table of features. That is easy to scan, but it hides the decision that matters: what workflow does the product make easier?
+
+For Figma and Paper, the core distinction is this:
+
+- Figma is strongest as a shared design system, review, prototyping, and handoff environment.
+- Paper is strongest as a web-standards canvas where design, code, real content, and agents stay closer together.
+
+The diagrams below split the comparison into two visual arguments. The first asks what each product can do. The second asks how work moves through each product.
+
+<div className="not-prose my-8 overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <img src="/docs/images/figma-paper-comparison/capability-map.png" alt="Capability map comparing Figma strength, Paper strength, their shared ground, and when to choose each tool." />
+</div>
+
+<div className="not-prose my-8 overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <img src="/docs/images/figma-paper-comparison/workflow-comparison.png" alt="Workflow comparison showing Figma's design-to-handoff lane and Paper's HTML/CSS canvas loop with agents and code." />
+</div>
+
+## Who This Is For
+
+This is for designers, design engineers, product builders, and AI workflow operators who need to decide which design surface belongs in a workflow.
+
+It is especially useful when the question is not "Which tool is better?" but:
+
+- Which tool should be the source of product intent?
+- Which tool should be used for implementation exploration?
+- Where should agents, code, and design systems interact?
+- Where does the team want review and approval to happen?
+
+<Info>
+In this note, "Paper" means the design product at `paper.design`, not an arbitrary webpage. If the comparison target is a specific live page, the same diagram method still applies, but the evidence should come from that page instead.
+</Info>
+
+## Prerequisites
+
+- A clear definition of the two products being compared
+- Current product sources, preferably official pages
+- A separation between feature claims and workflow claims
+- A drawing format that can show relationships, not only labels
+- A place to publish or archive the visual result
+
+The sources used for this comparison were:
+
+- Figma Design: `https://www.figma.com/design/`
+- Figma Dev Mode: `https://www.figma.com/dev-mode/`
+- Figma Sites: `https://www.figma.com/sites/`
+- Figma Make: `https://www.figma.com/make/`
+- Paper homepage: `https://paper.design/`
+- Paper vs Figma: `https://paper.design/compare/figma`
+
+## The Workflow
+
+<Steps>
+  <Step title="State the comparison assumption">
+    Start by clarifying the object being compared. Here, the ambiguous phrase "the page" was treated as Paper, the design product. Without this assumption, a diagram could compare the wrong thing.
+  </Step>
+  <Step title="Collect product claims from current sources">
+    Use current sources before drawing. Figma's public pages emphasize design, collaboration, workflow, Dev Mode, Sites, and Make. Paper's comparison page emphasizes a code-native HTML/CSS canvas, MCP integration, visual effects, and agent workflows.
+  </Step>
+  <Step title="Separate capability overlap from product gravity">
+    Both products can support UI composition and design-to-build intent. The difference is product gravity: Figma pulls work toward collaborative design governance, while Paper pulls work toward code-native implementation loops.
+  </Step>
+  <Step title="Draw the capability map first">
+    Use overlapping regions instead of a table. The overlap region shows shared ground; the outer regions show where each product is more naturally differentiated.
+  </Step>
+  <Step title="Draw the workflow map second">
+    Use lanes and arrows to show how work moves. Figma's lane runs from idea and design system work through review and handoff. Paper's lane converges design edits, codebase tokens, and real content into an HTML/CSS canvas, then loops through agents and responsive variants.
+  </Step>
+  <Step title="Turn the diagram into a decision rule">
+    End with operational guidance: choose Figma for broad design collaboration and governance, choose Paper for agent-assisted web UI production, and use both when approval and implementation exploration need different surfaces.
+  </Step>
+</Steps>
+
+### Capability Reading
+
+Figma's differentiated strengths are maturity and breadth. It has a large ecosystem, multiplayer files, product-design collaboration patterns, FigJam, Dev Mode, Sites, Make, and enterprise design-system workflows.
+
+Paper's differentiated strengths are its web-native design model and agent loop. Its product claim is that a canvas based on HTML and CSS reduces translation into code and gives agents a surface they can read and write more directly.
+
+<Tip>
+For product comparisons, avoid asking only "What features exist?" Ask "What work becomes easier, and what work still requires translation?"
+</Tip>
+
+### Workflow Reading
+
+Figma's workflow is broad and organizational. It is well suited to workshops, design systems, prototyping, comments, review, and developer handoff. Its newer code-facing features reduce friction, but production implementation still often requires interpreting design intent into code.
+
+Paper's workflow is narrower but more implementation-oriented. The central object is an HTML/CSS canvas. Design edits, codebase tokens, real content, responsive variants, and agents are all closer to the same web model.
+
+That distinction changes the decision:
+
+| Need | Better Default |
+| --- | --- |
+| Team review and design-system governance | Figma |
+| Mature plugin and community ecosystem | Figma |
+| Collaborative product-design source of truth | Figma |
+| Agent-assisted UI exploration | Paper |
+| HTML/CSS-native canvas behavior | Paper |
+| Reducing design-to-code reinterpretation | Paper |
+| Approval in one tool, implementation exploration in another | Both |
+
+## Common Failure Modes
+
+<Warning>
+Do not compare products only as a checklist. A checklist can say both tools support design work, but it will not show where the handoff burden moves.
+</Warning>
+
+<Warning>
+Do not treat marketing labels as equivalent. "AI", "developer handoff", "websites", and "code" can mean very different things depending on whether the product's underlying canvas is a proprietary design model or web primitives.
+</Warning>
+
+<Warning>
+Do not publish a diagram without validating the rendered preview. Text overflow and ambiguous arrows can make a comparison less trustworthy than a short paragraph.
+</Warning>
+
+## Final Checklist
+
+- [ ] The comparison target is unambiguous.
+- [ ] Current sources were checked before drawing.
+- [ ] Shared capabilities are separated from differentiated strengths.
+- [ ] The diagram shows workflow movement, not only feature labels.
+- [ ] The final decision rule tells a reader when to choose Figma, Paper, or both.
+- [ ] The rendered diagrams are readable inside the published note.
+
+## What To Remember
+
+Figma and Paper are not only two design tools; they represent two different workflow centers. Figma centers the team design process. Paper centers the web-native implementation loop.
+
+The durable comparison is: Figma is better when the organization needs design review, system governance, prototyping, and mature handoff; Paper is better when the team wants agents and code to work directly against a canvas that already behaves more like the web.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-06</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">figma</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">paper</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">design-workflow</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">visual-notes</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">AI design workflows</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Design to code handoff</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Visual product comparisons</span>
+      </div>
+    </div>
+  </Card>
+</div>
