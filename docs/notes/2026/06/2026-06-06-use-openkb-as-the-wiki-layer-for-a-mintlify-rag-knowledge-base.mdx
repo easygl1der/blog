@@ -1,0 +1,202 @@
+---
+title: "Use OpenKB as the Wiki Layer for a Mintlify RAG Knowledge Base"
+description: "A practical workflow for keeping Mintlify as the public blog while using OpenKB to compile selected notes into an LLM Wiki and connecting that wiki to RAG query tools."
+date: "2026-06-06"
+type: "guide"
+tags: [openkb, mintlify, rag, llm-wiki, knowledge-base]
+status: "published"
+---
+
+# Use OpenKB as the Wiki Layer for a Mintlify RAG Knowledge Base
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-06</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">8 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Keep Mintlify as the public publishing layer, use OpenKB as a periodic Markdown wiki compiler, and connect the compiled wiki to RAGFlow, Open WebUI, AnythingLLM, or LangFlow when a query surface is needed.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">openkb</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mintlify</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">rag</span>
+  </div>
+</div>
+
+## Summary
+
+OpenKB is best treated as a knowledge compiler, not as a replacement for the public blog or as a traditional vector database. The durable source stays in Mintlify-friendly Markdown/MDX, OpenKB periodically compiles selected notes into an interlinked LLM Wiki, and a separate query surface can read either the clean note export or the compiled wiki.
+
+The working rule is simple: write and publish normally, mark only canonical notes for the knowledge base, then refresh OpenKB in batches instead of running it after every small note.
+
+---
+
+## What This Solves
+
+The problem is not just how to publish notes. The real goal is to make personal knowledge usable in three different ways:
+
+- public readers should see a clean blog or documentation site
+- future AI tools should have a structured LLM-readable wiki
+- chat or agent tools should be able to search and answer over the selected knowledge
+
+Mintlify already solves the public publishing layer. OpenKB adds a compilation layer that turns selected sources into a persistent wiki with summaries, concepts, entities, cross-references, and query/chat output. RAGFlow, Open WebUI, AnythingLLM, and LangFlow then become optional query layers.
+
+<Info>
+The key design decision is to avoid making any one tool own everything. Mintlify owns public presentation, OpenKB owns wiki compilation, and the RAG tools own query experiences.
+</Info>
+
+## Who This Is For
+
+This workflow is for a personal knowledge system where notes are captured frequently, cleaned up into public posts when useful, and later distilled into a more canonical knowledge base.
+
+It is especially useful when the same material should serve multiple readers:
+
+- humans reading the public blog
+- LLM agents reading a wiki or `llms.txt`
+- RAG tools indexing a curated document set
+- the author revisiting decisions, workflows, fixes, and research notes
+
+## Prerequisites
+
+- An existing Mintlify blog or documentation site.
+- A repeatable note publishing workflow such as `takenotes`.
+- A separate workspace for the compiled knowledge base, for example `/Users/yitwah/Projects/yitwah-kb`.
+- OpenKB installed and configured with an LLM provider.
+- One optional query surface: OpenKB CLI, AnythingLLM, Open WebUI, RAGFlow, or LangFlow.
+
+<Warning>
+Do not make RAGFlow, Open WebUI, or AnythingLLM the only place where knowledge lives. Their internal databases are useful for retrieval, but Markdown remains the better durable source of truth.
+</Warning>
+
+## The Workflow
+
+<Steps>
+  <Step title="Keep capturing notes normally">
+    Use `takenotes` or another lightweight capture workflow for raw conversations, troubleshooting sessions, decisions, research notes, and workflow discoveries. The daily capture step should not depend on OpenKB.
+  </Step>
+  <Step title="Publish useful notes to Mintlify">
+    Continue using Mintlify as the public blog. It remains the human-readable and LLM-readable publishing layer, especially because public pages and LLM text exports can be consumed later.
+  </Step>
+  <Step title="Mark only canonical notes for the knowledge base">
+    Add metadata such as `kb: true`, `kb_type: canonical`, and `topics` only when a note should become long-term reusable knowledge. Most notes can stay as ordinary public posts.
+  </Step>
+  <Step title="Export selected MDX into clean Markdown">
+    Convert the selected Mintlify notes into plain Markdown before feeding them to OpenKB. Remove site-only components when they do not help retrieval, but preserve titles, summaries, source URLs, commands, and decisions.
+  </Step>
+  <Step title="Run OpenKB periodically">
+    Run OpenKB weekly, after a batch of canonical notes, or when explicitly refreshing the knowledge base. OpenKB compiles the selected files into `wiki/index.md`, `summaries`, `concepts`, `entities`, and related output.
+  </Step>
+  <Step title="Use the compiled wiki as the RAG input">
+    Point OpenKB query/chat, AnythingLLM, Open WebUI, RAGFlow, or LangFlow at the compiled wiki or the clean Markdown export. The query tool should read from the durable Markdown layer rather than replacing it.
+  </Step>
+</Steps>
+
+A practical folder layout is:
+
+```text
+/Users/yitwah/Projects/blog/
+  docs/notes/
+  docs.json
+  scripts/
+
+/Users/yitwah/Projects/yitwah-kb/
+  raw/
+  clean/
+  wiki/
+  output/
+  scripts/
+```
+
+The recurring operation can stay small:
+
+```bash
+cd /Users/yitwah/Projects/yitwah-kb
+python scripts/export_mintlify_notes.py
+openkb add clean/
+openkb lint
+openkb query "What are my current RAG knowledge-base patterns?"
+```
+
+## Common Failure Modes
+
+<Warning>
+Running OpenKB after every tiny note adds ceremony to the capture process. Keep OpenKB as a periodic compiler, not as a daily note-taking requirement.
+</Warning>
+
+<Warning>
+Indexing every blog post makes the RAG layer noisy. Use a `kb: true` style flag so only selected durable notes become canonical knowledge.
+</Warning>
+
+<Warning>
+Putting Mintlify MDX directly into a RAG tool can preserve publishing components that are not useful for retrieval. Prefer a clean Markdown export that keeps semantic content and removes visual wrapper markup.
+</Warning>
+
+<Tip>
+Start with OpenKB query/chat before adding a heavier UI. If the compiled `wiki/concepts` output is not useful, a polished chat interface will not fix the underlying knowledge shape.
+</Tip>
+
+## Final Checklist
+
+- [ ] Mintlify remains the public blog and does not need to be replaced.
+- [ ] Canonical notes have an explicit knowledge-base marker such as `kb: true`.
+- [ ] A clean Markdown export exists outside the blog repository.
+- [ ] OpenKB compiles selected notes into a separate `wiki/` folder.
+- [ ] The compiled wiki is reviewed for useful `concepts` and `summaries`.
+- [ ] One query surface is selected deliberately: OpenKB CLI, AnythingLLM, Open WebUI, RAGFlow, or LangFlow.
+- [ ] The Markdown source remains versioned and portable.
+
+## What To Remember
+
+The best architecture is layered:
+
+```text
+takenotes
+  -> Mintlify public blog
+  -> selected clean Markdown export
+  -> OpenKB compiled LLM Wiki
+  -> query surface such as OpenKB chat, AnythingLLM, Open WebUI, RAGFlow, or LangFlow
+```
+
+OpenKB is the middle layer. It compiles and maintains knowledge so it can accumulate over time. It should not replace Mintlify, and it does not need to be run every time a note is written.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-06</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">openkb</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mintlify</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">rag</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">llm-wiki</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">knowledge-base</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">LLM Wiki</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Personal RAG</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Knowledge Compilation</span>
+      </div>
+    </div>
+  </Card>
+</div>
