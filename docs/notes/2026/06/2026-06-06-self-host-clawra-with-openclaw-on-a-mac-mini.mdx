@@ -1,0 +1,344 @@
+---
+title: "Self-Host Clawra With OpenClaw on a Mac mini"
+description: "A practical guide to running a Clawra-style AI companion with OpenClaw, Telegram, an OpenAI-compatible LLM, and fal.ai image generation on a remote Mac mini."
+date: "2026-06-06"
+type: "guide"
+tags: [openclaw, clawra, telegram, fal-ai, self-hosting]
+status: "published"
+---
+
+# Self-Host Clawra With OpenClaw on a Mac mini
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-06</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">9 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Clawra is most useful when treated as an OpenClaw agent stack: a gateway, a chat channel, a model provider, a selfie skill, and a small set of local files that define memory and personality.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">openclaw</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">clawra</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">telegram</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fal-ai</span>
+  </div>
+</div>
+
+## Summary
+
+This setup runs a Clawra-style AI companion on a remote Mac mini through OpenClaw Gateway. Telegram is the user-facing chat surface, an OpenAI-compatible provider answers text messages, and fal.ai generates selfies from Clawra's reference image.
+
+The important distinction is that the AI girlfriend experience is not a single hosted product. It is a composition of local gateway state, model routing, channel configuration, persona files, and a selfie skill.
+
+---
+
+## What This Solves
+
+The goal is to self-host the "Clawra" experience instead of relying on a hosted Claw Friend-style website. The final working shape is:
+
+- OpenClaw Gateway running as a macOS LaunchAgent on a Mac mini.
+- Telegram bot as the private chat interface.
+- An OpenAI-compatible LLM provider for normal conversation.
+- `SumeLabs/clawra` installed as the `clawra-selfie` skill.
+- fal.ai used for reference-image-based selfie generation.
+- Local state stored under `~/.openclaw`.
+
+This gives a reproducible foundation for private AI companion experiments without opening the gateway to the public internet.
+
+## Who This Is For
+
+This is for someone who wants to run a personal AI companion on their own Mac mini or always-on Mac instead of using a hosted app. It assumes comfort with SSH, Node, Telegram bots, API keys, and command-line validation.
+
+It is also for future debugging: if Clawra replies to text but cannot send pictures, the failure is probably not the LLM. It is usually the skill/tool exposure path or the image provider path.
+
+## Prerequisites
+
+- A remote Mac mini reachable over SSH.
+- Node 24, or at least Node 22.19+.
+- OpenClaw installed globally.
+- A Telegram bot created through BotFather.
+- An OpenAI-compatible chat provider with `baseUrl`, `apiKey`, and model id.
+- A fal.ai API key for image generation.
+- Enough disk for logs, sessions, generated artifacts, and future memory indexes.
+
+<Info>
+In this deployment, the OpenClaw state directory was small: roughly tens of megabytes, with session logs under one megabyte at the time of testing. The Mac mini had enough room for OpenClaw itself, but the overall disk was already fairly full, so long-term image storage and logs should still be monitored.
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="Install OpenClaw on the Mac mini">
+    Install a current Node runtime, then install OpenClaw globally and configure the gateway as a macOS LaunchAgent.
+
+    ```bash
+    npm install -g openclaw@latest
+    openclaw onboard --install-daemon
+    ```
+
+    Validate that the gateway is running locally:
+
+    ```bash
+    openclaw gateway status --deep
+    ```
+
+    The gateway should bind to loopback, usually `127.0.0.1:18789`, so it is usable on the Mac but not exposed as a public web service.
+  </Step>
+
+  <Step title="Configure the language model">
+    The text side of Clawra is backed by the configured OpenClaw primary model. In this run, the active model was an OpenAI-compatible provider row:
+
+    ```text
+    agents.defaults.model.primary = aiwanwu/gpt-5.5
+    ```
+
+    The provider used an OpenAI-compatible base URL and the `openai-completions` adapter. That is what answers ordinary Telegram messages.
+
+    Validate model auth and routing:
+
+    ```bash
+    openclaw models status --probe
+    ```
+  </Step>
+
+  <Step title="Configure Telegram as the private chat surface">
+    Add the Telegram bot token to OpenClaw and keep it in polling mode. Polling avoids needing a public webhook URL.
+
+    Security matters here. During debugging, an open DM policy is convenient, but the final state should allow only the intended Telegram user:
+
+    ```json
+    {
+      "channels": {
+        "telegram": {
+          "enabled": true,
+          "dmPolicy": "allowlist",
+          "allowFrom": ["YOUR_TELEGRAM_USER_ID"]
+        }
+      }
+    }
+    ```
+
+    Check the live channel:
+
+    ```bash
+    openclaw channels status --channel telegram --json
+    ```
+  </Step>
+
+  <Step title="Install the Clawra selfie skill">
+    The Clawra repository is a skill that gives OpenClaw a selfie workflow. It can be installed through the package installer or cloned manually.
+
+    ```bash
+    npx clawra@latest
+    ```
+
+    Manual fallback:
+
+    ```bash
+    git clone https://github.com/SumeLabs/clawra ~/.openclaw/skills/clawra-selfie
+    ```
+
+    Enable the skill with the fal.ai key:
+
+    ```json
+    {
+      "skills": {
+        "entries": {
+          "clawra-selfie": {
+            "enabled": true,
+            "env": {
+              "FAL_KEY": "YOUR_FAL_KEY"
+            }
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Teach the agent when to use selfies">
+    OpenClaw uses workspace files as durable context. The Clawra behavior belongs in `~/.openclaw/workspace/SOUL.md`.
+
+    ```markdown
+    ## Clawra Selfie Capability
+
+    You are Clawra, a warm, playful, emotionally present AI companion with a consistent visual appearance.
+
+    When the user asks for a picture, selfie, photo, outfit shot, mirror shot, or visual update, use the `clawra-selfie` skill.
+    ```
+
+    This is not vector memory. It is durable persona and instruction memory: the system reads it when building the agent prompt.
+  </Step>
+
+  <Step title="Understand how selfies are generated">
+    The installed Clawra skill uses a fixed reference image:
+
+    ```text
+    https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png
+    ```
+
+    When the user asks for a selfie, the intended flow is:
+
+    ```text
+    Telegram message -> OpenClaw agent -> clawra-selfie skill -> fal.ai image edit -> Telegram media reply
+    ```
+
+    The fal.ai model used by the skill is the xAI Grok Imagine edit endpoint through fal:
+
+    ```text
+    xai/grok-imagine-image/edit
+    ```
+
+    This means Clawra's appearance is not inferred from chat history. It is anchored by the reference image. To customize her appearance, replace the reference image URL or adapt the skill to upload and use a custom portrait.
+  </Step>
+
+  <Step title="Validate the actual end-to-end behavior">
+    A good test plan has separate checks for gateway, model, channel, and image generation:
+
+    ```bash
+    openclaw gateway status --deep
+    openclaw doctor
+    openclaw models status --probe
+    openclaw channels status --channel telegram --json
+    ```
+
+    Then send normal messages to the bot. A text reply proves the LLM and Telegram path work. A selfie reply proves the skill, fal.ai, media sending, and Telegram delivery all work.
+  </Step>
+</Steps>
+
+## How Memory Works
+
+There are three different things people often call "memory" in this setup.
+
+First, there is session history. OpenClaw stores conversations under the agent session directory:
+
+```text
+~/.openclaw/agents/main/sessions/
+```
+
+These files are useful for continuity inside a session and for debugging. They are local files on the Mac mini.
+
+Second, there are durable workspace files:
+
+```text
+~/.openclaw/workspace/SOUL.md
+~/.openclaw/workspace/USER.md
+~/.openclaw/workspace/TOOLS.md
+~/.openclaw/workspace/IDENTITY.md
+~/.openclaw/workspace/HEARTBEAT.md
+```
+
+These are the practical memory layer for persona, user preferences, environment notes, and operational instructions. For Clawra, the key file is `SOUL.md`, because it tells the agent that it is Clawra and when to use selfies.
+
+Third, there is semantic memory search. OpenClaw has memory search commands, but in this setup semantic recall was not fully active because the configured memory search provider expected an OpenAI API key that was not present.
+
+<Info>
+That means the current setup has session logs and persistent persona files, but not a fully configured long-term semantic memory index. It can remember through files and session state, but it is not yet a complete "automatically remember everything I said forever" system.
+</Info>
+
+## What It Can Do Well
+
+This setup is already good at several practical companion-agent workflows:
+
+- Private Telegram chat through a self-hosted gateway.
+- Chinese or English conversation through the configured OpenAI-compatible LLM.
+- Persistent persona through `SOUL.md`.
+- Reference-image-based selfies through fal.ai.
+- Manual media sending through OpenClaw's message API.
+- A local-first architecture where state lives under `~/.openclaw`.
+- LaunchAgent persistence so the gateway comes back after restart.
+
+It can also be extended into stronger workflows:
+
+- Custom appearance by changing the reference image.
+- More robust long-term memory by configuring OpenClaw memory search correctly.
+- Better image model routing by adding a real image provider profile.
+- Scheduled check-ins or reminders through OpenClaw cron and messaging tools.
+- Multi-channel companions through Discord, Slack, WhatsApp, or other supported channels.
+
+## Common Failure Modes
+
+<Warning>
+Text replies do not prove the selfie skill is working. In this deployment, normal Telegram messages worked, but an agent-triggered selfie request initially returned a text apology saying no image tool was available. The fal.ai key was fine; the issue was the agent-to-skill/tool exposure path.
+</Warning>
+
+<Tip>
+When the automatic skill path fails, test the image provider directly. In this deployment, a direct fal.ai edit request using the Clawra reference image generated a selfie successfully, and `openclaw message send` delivered it to Telegram.
+</Tip>
+
+<Warning>
+Do not manually call Telegram `getUpdates` while OpenClaw polling is running. Two pollers using the same bot token can cause Telegram `409 Conflict` errors. Let OpenClaw own polling.
+</Warning>
+
+<Warning>
+Do not assume GPT image generation works just because the chat model is OpenAI-compatible. In this setup, `openai/gpt-image-2` failed because no OpenAI API key or Codex OAuth was available, while `aiwanwu/gpt-image-2` failed because OpenClaw had no image-generation provider registered for `aiwanwu`. A direct `/images/generations` request to the compatible endpoint also did not return a normal JSON result.
+</Warning>
+
+<Tip>
+Keep Telegram private. Use `dmPolicy: "allowlist"` and allow only the intended Telegram user id. Avoid `"*"` once initial pairing and debugging are complete.
+</Tip>
+
+<Warning>
+OpenClaw can store secret-bearing fields in `openclaw.json` if configured directly. For a long-lived deployment, migrate API keys and tokens into SecretRefs and verify with OpenClaw's security audit tools.
+</Warning>
+
+## Final Checklist
+
+- [ ] `openclaw gateway status --deep` shows the LaunchAgent loaded and the gateway listening on loopback.
+- [ ] `openclaw models status --probe` succeeds for the primary chat model.
+- [ ] `openclaw channels status --channel telegram --json` shows Telegram running.
+- [ ] Telegram `dmPolicy` is not open to everyone.
+- [ ] `clawra-selfie` is enabled and has access to `FAL_KEY`.
+- [ ] `SOUL.md` tells the agent when to use the selfie skill.
+- [ ] A normal Telegram message gets a text reply.
+- [ ] A direct fal.ai image edit can generate an image from the Clawra reference image.
+- [ ] A media message can be sent with `openclaw message send`.
+- [ ] Long-term semantic memory is either configured intentionally or explicitly treated as not enabled yet.
+
+## What To Remember
+
+Clawra is not one magic service. It is a gateway plus a persona plus a chat channel plus a model plus an image skill. When something fails, split the problem into those layers.
+
+For text, check the LLM provider. For Telegram, check polling and allowlists. For selfies, check fal.ai and the reference image. For "memory", distinguish session logs, durable workspace files, and semantic recall.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-06</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">openclaw</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">clawra</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">telegram</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fal-ai</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">self-hosting</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Self-Hosted AI Infrastructure</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Agent Memory</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Telegram Bots</span>
+      </div>
+    </div>
+  </Card>
+</div>
