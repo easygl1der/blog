@@ -1,0 +1,141 @@
+---
+title: "Codex Forks: Local Chat Branches vs New Worktrees"
+description: "A practical guide to what Codex fork options do to chat context, current files, and Git worktree state."
+date: "2026-06-06"
+type: "guide"
+tags: [codex, worktree, git, ai-workflows]
+status: "published"
+---
+
+# Codex Forks: Local Chat Branches vs New Worktrees
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-06</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">4 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Codex forks are best understood as chat branches first; use Git commits and worktrees when you need a precise code snapshot.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">worktree</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">git</span>
+  </div>
+</div>
+
+## Summary
+
+Forking a Codex conversation from an old message does not automatically rewind the files on disk to that old moment. The fork controls where the chat continues from; the code state comes from the current local folder or a newly created worktree, depending on the option.
+
+---
+
+## What This Solves
+
+Codex offers fork options such as `Fork into local` and `Fork into new worktree`, and the names can make it sound as if an old message is also an old filesystem snapshot. The safer mental model is: a fork starts a new conversation branch from a chosen message, while file state is a separate concern.
+
+This matters when you want to go back to a much earlier message and try another implementation. If you choose the wrong option, you may think you are working from the old code when you are actually working against the current files.
+
+## Who This Is For
+
+This is for Codex users who switch between investigation, implementation, and alternative attempts in the same repo. It is especially useful when a later part of the conversation changed files and you now want to branch from an earlier point in the discussion.
+
+## Prerequisites
+
+- A Codex thread with at least one earlier message you can fork from.
+- A project folder or Git repo attached to that thread.
+- Basic awareness of Git commits if you need an exact old code state.
+
+## The Workflow
+
+<Steps>
+  <Step title="Separate chat history from file state">
+    Treat the selected old message as the place where the new conversation begins. Do not assume the files on disk become the files that existed when that message was originally written.
+  </Step>
+  <Step title="Use Fork into local for the same folder">
+    Choose `Fork into local` when you only want a new chat branch and are comfortable using the current local workspace. Any file edits in the fork happen in the same folder, so they affect the same working copy.
+  </Step>
+  <Step title="Use Fork into new worktree for isolation">
+    Choose `Fork into new worktree` when you want a separate working folder for an alternative attempt. This is useful for parallel experiments because edits in the new worktree do not directly overwrite the current worktree.
+  </Step>
+  <Step title="Use Git when you need the old code">
+    If your real goal is to return to a specific historical code state, pick a commit explicitly and create a branch or worktree from that commit.
+  </Step>
+</Steps>
+
+For an exact historical code state, use Git directly:
+
+```bash
+git log --oneline
+git worktree add ../old-version <old-commit>
+```
+
+That creates a separate folder based on the commit you chose, which is different from simply forking a chat from an old message.
+
+## Common Failure Modes
+
+<Warning>
+The biggest mistake is treating a forked old message as a filesystem time machine. In normal use, Codex does not automatically roll your disk back to the state from that earlier message.
+</Warning>
+
+<Warning>
+With `Fork into local`, the new chat branch still works in the same local folder. If the forked conversation edits files, those edits touch the same working copy you were already using.
+</Warning>
+
+<Info>
+With `Fork into new worktree`, you get a separate working folder, which is good for isolation. But it still should not be treated as proof that the code equals the exact old message state unless you have verified the Git commit or branch it was created from.
+</Info>
+
+<Tip>
+Use this rule of thumb: fork for conversation branching, Git for code history. If the code state matters, name the commit, branch, or worktree explicitly.
+</Tip>
+
+## Final Checklist
+
+- [ ] Decide whether you need only a new conversation branch or a separate code folder.
+- [ ] Choose `Fork into local` only when sharing the same current workspace is acceptable.
+- [ ] Choose `Fork into new worktree` when you want isolated edits for an alternative attempt.
+- [ ] Use `git log --oneline` and a specific commit when you need the code to match an older point in history.
+- [ ] Before large edits, check which folder or worktree Codex is operating in.
+
+## What To Remember
+
+`Fork into local` means old chat context plus the same local workspace. `Fork into new worktree` means old chat context plus a separate workspace. Neither option should be relied on as an automatic rollback to the exact files that existed when the selected old message was sent.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-06</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">worktree</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">git</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Codex workflows</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Git worktrees</span>
+      </div>
+    </div>
+  </Card>
+</div>
