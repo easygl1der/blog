@@ -117,6 +117,7 @@
                     "group": "Workflow Guides",
                     "pages": [
                       "docs/notes/2026/06/2026-06-07-choose-the-right-stitch-export-path-for-a-full-stack-app",
+                      "docs/notes/2026/06/2026-06-07-build-an-agent-knowledge-base-before-full-stack-work",
                       "docs/notes/2026/06/2026-06-06-codex-forks-local-chat-branches-vs-new-worktrees",
                       "docs/notes/2026/06/2026-06-06-self-host-clawra-with-openclaw-on-a-mac-mini",
                       "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",

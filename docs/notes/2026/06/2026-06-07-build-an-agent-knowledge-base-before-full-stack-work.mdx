@@ -1,0 +1,234 @@
+---
+title: "Build an Agent Knowledge Base Before Full-Stack Work"
+description: "Turn product intent, Paper designs, backend decisions, and build procedures into a local knowledge base before asking Codex to implement a full-stack app."
+date: "2026-06-07"
+type: "guide"
+tags: [codex, knowledge-base, full-stack, paper, agent-workflow]
+status: "published"
+---
+
+# Build an Agent Knowledge Base Before Full-Stack Work
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-07</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">6 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    A full-stack agent works better when it can read a structured product memory instead of guessing from a single UI mockup.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">knowledge-base</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">full-stack</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">paper</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">agent-workflow</span>
+  </div>
+</div>
+
+## Summary
+
+Riley Brown's "build a knowledge base" advice is best understood as an operating layer for agents: write down your product, design, examples, backend choices, workflow rules, and success criteria before asking the agent to build. For full-stack work, the practical version is a local Markdown knowledge base that Codex can read directly, with Notion as an optional human-facing dashboard.
+
+Paper is the UI source. The knowledge base is the product and engineering source. Codex or Claude Code is the builder.
+
+---
+
+## What This Solves
+
+The failure mode is asking an agent: "turn this Paper design into a full-stack app." That prompt gives the agent a surface, but not enough context to make stable decisions about data, auth, backend responsibilities, examples, product boundaries, or deployment.
+
+An agent knowledge base solves this by making implicit context explicit:
+
+- what the product is
+- who it serves
+- which pages exist
+- which components and states matter
+- which backend services are allowed
+- which examples define quality
+- which workflow the agent should follow
+
+<Tip>
+Treat the knowledge base as the agent's operating manual. It should be readable enough that another agent could build from it without re-interviewing you.
+</Tip>
+
+## Who This Is For
+
+This is for building a real app from a Paper design with Codex, Claude Code, or another coding agent.
+
+It is especially useful when the target app needs frontend screens plus backend behavior: auth, database tables, file storage, API routes, AI provider calls, deployment, and ongoing iteration.
+
+## Prerequisites
+
+- A Paper design or at least a rough UI direction.
+- A stack decision, such as Next.js, Supabase, GitHub, and Vercel.
+- A local workspace where Markdown docs can live next to the code.
+- Optional: Notion if you want a human-facing workspace or database.
+- Optional: `full-stack-doc` if you want heavier PRD, architecture, UI, and version-planning structure.
+
+<Info>
+Notion is useful for human organization. Local Markdown is usually better as the source that Codex reads, edits, and turns into code.
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="Separate the roles">
+    Use Paper as the design source, the knowledge base as the product and engineering source, and Codex or Claude Code as the implementation agent. Do not make the Paper canvas carry every backend and product decision.
+  </Step>
+  <Step title="Write the product brief">
+    Capture the app's purpose, target users, core jobs, non-goals, success criteria, and V1 scope. This prevents the agent from expanding the product randomly.
+  </Step>
+  <Step title="Extract the UI spec from Paper">
+    Turn the Paper design into a screen list, route list, component list, layout rules, visual tokens, UI states, and responsive behavior.
+  </Step>
+  <Step title="Define the backend plan">
+    Decide the database, auth, storage, API routes, AI provider calls, and deployment path before implementation. For many early apps, use Next.js, Supabase, GitHub, and Vercel.
+  </Step>
+  <Step title="Add examples">
+    Put in examples of apps, pages, content, videos, writing, or interface patterns that count as good. Agents perform better with concrete references than with abstract taste rules.
+  </Step>
+  <Step title="Write the build workflow">
+    Tell the agent what order to work in: frontend with mock data first, backend second, then integration, testing, GitHub, and Vercel.
+  </Step>
+  <Step title="Let the agent read docs before coding">
+    Start implementation by asking Codex to read the knowledge base and summarize the plan. Only then ask it to implement the first phase.
+  </Step>
+</Steps>
+
+A practical local structure:
+
+```text
+docs/
+  knowledge-base/
+    product-brief.md
+    ui-spec.md
+    data-model.md
+    backend-plan.md
+    build-workflow.md
+    test-checklist.md
+    deployment-notes.md
+    examples.md
+```
+
+The first prompt should create the documents, not code:
+
+```text
+Create a local knowledge base for this app.
+
+Use my Paper design as the design source.
+Assume stack: Next.js, Supabase, GitHub, and Vercel.
+
+Create these docs:
+1. product-brief.md
+2. ui-spec.md
+3. data-model.md
+4. backend-plan.md
+5. build-workflow.md
+6. test-checklist.md
+7. deployment-notes.md
+8. examples.md
+
+Do not write app code yet. Make the docs clear enough that another agent could build the app from them.
+```
+
+Then implement in phases:
+
+```text
+Read the knowledge base docs first.
+Summarize the product, screens, data model, and build phases.
+
+Then implement phase 1 only:
+frontend screens from the Paper design using mock data.
+Do not connect Supabase yet.
+```
+
+## Common Failure Modes
+
+<Warning>
+Do not treat the knowledge base as chat memory. Chat memory is vague and hard to audit. Use files the agent can read, quote, edit, and version.
+</Warning>
+
+<Warning>
+Do not start by connecting the backend. Build the frontend with mock data first, confirm that the UI matches the Paper design, then wire Supabase or Firebase.
+</Warning>
+
+<Warning>
+Do not put everything in one giant document. Split product, UI, data, backend, workflow, tests, and deployment so the agent can update the right file without rewriting the whole plan.
+</Warning>
+
+<Warning>
+Do not let Notion be the only durable source if the app will be built by Codex. A local Markdown knowledge base inside the repo is easier for the agent to use repeatedly.
+</Warning>
+
+<Tip>
+Use `full-stack-doc` when the project is big enough to need PRD, architecture, UI design notes, version planning, and module docs. For a small V1, start with the lightweight knowledge-base folder and expand later.
+</Tip>
+
+## Final Checklist
+
+- [ ] Paper contains the key screens and important UI states.
+- [ ] `product-brief.md` explains purpose, users, goals, non-goals, and V1 scope.
+- [ ] `ui-spec.md` maps Paper screens to routes, components, and responsive behavior.
+- [ ] `data-model.md` describes entities, fields, relationships, and ownership.
+- [ ] `backend-plan.md` defines auth, database, storage, APIs, and AI calls.
+- [ ] `build-workflow.md` tells the agent to build frontend first with mock data.
+- [ ] `test-checklist.md` covers auth, data writes, permissions, empty states, and deployment checks.
+- [ ] Codex reads and summarizes the docs before writing code.
+
+## What To Remember
+
+Riley's knowledge-base idea becomes most useful when it is treated as a working product memory, not as a note archive. The agent should know what good looks like, what data exists, what stack is allowed, and what order to build in.
+
+The operating model is:
+
+```text
+Paper design
+  -> local knowledge base
+  -> Codex implementation phases
+  -> GitHub
+  -> Vercel
+```
+
+Use Notion when you need a human dashboard. Use local Markdown when you need Codex to build reliably.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-07</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">knowledge-base</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">full-stack</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">paper</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">agent-workflow</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Paper to frontend</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Full-stack planning</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Agent operating manuals</span>
+      </div>
+    </div>
+  </Card>
+</div>
