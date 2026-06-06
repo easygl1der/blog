@@ -1,0 +1,222 @@
+---
+title: "Choose The Right Stitch Export Path For A Full Stack App"
+description: "Use Stitch exports as design-to-code handoff points, then move full stack product work into Next.js, Supabase, and a normal deployment pipeline."
+date: "2026-06-07"
+type: "guide"
+tags: [stitch, nextjs, supabase, frontend, fullstack]
+status: "published"
+---
+
+# Choose The Right Stitch Export Path For A Full Stack App
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-07</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">7 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Treat Stitch as the place to settle the interface, not as the final application architecture.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">stitch</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">nextjs</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">supabase</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">frontend</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fullstack</span>
+  </div>
+</div>
+
+## Summary
+
+Stitch exports are best understood as handoff routes from a UI design surface into another design, coding, or deployment environment. They can help you publish a preview quickly, continue the design in Figma, or move generated React code into an app builder, but they do not automatically give you a secure database, auth model, API layer, and production backend.
+
+For a serious product, export the brief and React app or ZIP, then rebuild the product boundary in Next.js with server-side routes, Supabase, and a Git-based deployment flow. For a fast MVP, Lovable or Bolt can carry the first build, but the result still needs a code and security review.
+
+---
+
+## What This Solves
+
+Stitch makes it easy to generate UI screens, but the export menu can make several different outcomes look equivalent. They are not equivalent.
+
+Some export choices move the design into another design tool. Some publish a frontend preview. Some hand the work to another AI app builder. Some give you code that can enter a normal engineering workflow.
+
+The core decision is whether you are trying to:
+
+- continue visual design,
+- publish a quick demo,
+- generate an MVP with an AI app builder,
+- or build a maintainable full stack product.
+
+<Tip>
+If the target is a real app, the best Stitch output is usually `Project Brief` plus `Stitch React App` or `.zip`, followed by a normal Next.js and Supabase implementation.
+</Tip>
+
+## Who This Is For
+
+This guide is for builders using Google Stitch to design a web app and wondering which export target should become the next step.
+
+It is especially relevant for UI-heavy AI apps such as a math markdown editor, workspace dashboard, document library, or assistant-backed writing tool. These products usually need more than a static frontend: they need auth, saved documents, version history, protected AI calls, and a deployment story.
+
+## Prerequisites
+
+- A Stitch project with the core screens already designed.
+- A decision about whether the next milestone is preview, MVP, or production-grade product.
+- A place to keep code, ideally GitHub.
+- A backend plan for auth, data, files, AI jobs, and permissions.
+- A deployment target such as Vercel, Netlify, or Cloud Run.
+
+<Info>
+Stitch is still an experimental Google Labs product. Export options and partner integrations can change, so the menu in the current project should be treated as the source of truth for the final click path.
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="Classify the export target">
+    Use `Figma` for design handoff, `Netlify` for a quick web preview, `Lovable` or `Bolt` for AI-assisted MVP generation, `AI Studio` for Google-centric AI app building, and `.zip`, `Code to Clipboard`, `Project Brief`, or `Stitch React App` for engineering handoff.
+  </Step>
+  <Step title="Use Figma only when design polish is the next bottleneck">
+    Figma export is for editable design layers and review. It is useful when a designer needs to refine spacing, responsive states, component variants, or visual systems before implementation.
+  </Step>
+  <Step title="Use Netlify when the goal is a shareable preview">
+    Netlify can make a Stitch-generated site visible on the web quickly. That is useful for feedback, but a direct deploy should not be confused with a completed backend.
+  </Step>
+  <Step title="Use Lovable or Bolt when speed matters more than control">
+    Lovable is strong for quick product MVPs with Supabase-style app logic. Bolt is closer to a browser-based coding environment and can be a good bridge from design to editable code.
+  </Step>
+  <Step title="Use AI Studio when the app belongs in the Google AI ecosystem">
+    AI Studio is most attractive when the app depends heavily on Gemini, Firebase, Google Workspace, Google Maps, or Cloud Run. It can continue the build inside Google's app builder flow.
+  </Step>
+  <Step title="Use React export or ZIP for serious code ownership">
+    `Stitch React App` is the cleanest export when the next step is real engineering. If that path fails, `.zip` is the most portable fallback. Keep `Project Brief` beside the code so the implementation agent knows the product intent.
+  </Step>
+  <Step title="Move full stack work into Next.js and Supabase">
+    Convert Stitch screens into Next.js routes and components. Put AI calls, document saving, export jobs, and permission checks behind server-side route handlers or server actions.
+  </Step>
+</Steps>
+
+A practical target structure looks like this:
+
+```text
+app/
+  workspace/
+  library/
+  editor/[documentId]/
+  api/
+    ai/rewrite/route.ts
+    documents/route.ts
+    export/pdf/route.ts
+components/
+  editor/
+  layout/
+  documents/
+lib/
+  supabase/
+  ai/
+  markdown/
+db/
+  migrations/
+  policies/
+```
+
+For an AI math markdown editor, the first backend tables are usually:
+
+- `profiles`
+- `workspaces`
+- `documents`
+- `document_versions`
+- `ai_jobs`
+
+The important boundary is that the browser never calls Gemini, OpenAI, or privileged Supabase APIs directly. The browser calls your own server route; the server route validates the user, performs the AI or database work, and returns the result.
+
+## Common Failure Modes
+
+<Warning>
+Exporting to Netlify can make the app visible without making it complete. A static or frontend-only deploy still lacks auth, database rules, secure AI calls, and business logic.
+</Warning>
+
+<Warning>
+Exporting to Figma is a design continuation path. It does not preserve the full application behavior needed for a working product.
+</Warning>
+
+<Warning>
+Lovable and Bolt can create useful MVPs quickly, but generated backends need review. Check Supabase row-level security, environment variables, API key exposure, and ownership boundaries before treating the result as production-ready.
+</Warning>
+
+<Warning>
+Copying code to the clipboard is convenient for a component, but it is weak for whole-app migration. It can miss assets, global styles, routing assumptions, and interaction state.
+</Warning>
+
+<Info>
+AI Studio can be the right target for Gemini-heavy applications, but it is still a platform choice. If long-term team development matters, plan a GitHub or ZIP handoff as part of the lifecycle.
+</Info>
+
+## Final Checklist
+
+- [ ] Decide whether the next milestone is design polish, preview, MVP, or production engineering.
+- [ ] Use `Project Brief` to preserve the product intent.
+- [ ] Use `Stitch React App` first when moving toward real engineering.
+- [ ] Use `.zip` as the portable fallback when React export is not enough.
+- [ ] Use `Lovable` or `Bolt` when the goal is a quick MVP.
+- [ ] Use `AI Studio` when Google AI and Firebase integrations are central.
+- [ ] Move protected API keys and privileged database actions to server-side code.
+- [ ] Add Supabase RLS before exposing user data.
+- [ ] Deploy from GitHub once the app becomes more than a demo.
+
+## What To Remember
+
+The export menu is not a ranking. It is a set of different handoff paths.
+
+For full stack work, the durable pattern is:
+
+```text
+Stitch design
+  -> Project Brief plus React App or ZIP
+  -> Next.js components and routes
+  -> Supabase data and auth
+  -> server-side AI routes
+  -> GitHub-backed deployment
+```
+
+Use Stitch to make the product clear. Use the application framework to make it reliable.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-07</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">stitch</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">nextjs</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">supabase</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">frontend</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fullstack</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Design to code handoff</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">AI app architecture</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Full stack deployment</span>
+      </div>
+    </div>
+  </Card>
+</div>

@@ -114,22 +114,23 @@
                 "group": "June",
                 "pages": [
                   {
-	                    "group": "Workflow Guides",
-	                    "pages": [
-	                      "docs/notes/2026/06/2026-06-06-codex-forks-local-chat-branches-vs-new-worktrees",
-	                      "docs/notes/2026/06/2026-06-06-self-host-clawra-with-openclaw-on-a-mac-mini",
-	                      "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",
-	                      "docs/notes/2026/06/2026-06-06-codex-skills-can-replace-some-workflow-code",
-	                      "docs/notes/2026/06/2026-06-06-use-openkb-as-the-wiki-layer-for-a-mintlify-rag-knowledge-base",
-	                      "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
+                    "group": "Workflow Guides",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-07-choose-the-right-stitch-export-path-for-a-full-stack-app",
+                      "docs/notes/2026/06/2026-06-06-codex-forks-local-chat-branches-vs-new-worktrees",
+                      "docs/notes/2026/06/2026-06-06-self-host-clawra-with-openclaw-on-a-mac-mini",
+                      "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",
+                      "docs/notes/2026/06/2026-06-06-codex-skills-can-replace-some-workflow-code",
+                      "docs/notes/2026/06/2026-06-06-use-openkb-as-the-wiki-layer-for-a-mintlify-rag-knowledge-base",
+                      "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
                       "docs/notes/2026/06/2026-06-03-use-codex-remote-projects-across-hosts",
                       "docs/notes/2026/06/2026-06-02-codex-goal",
-	                      "docs/notes/2026/06/2026-06-02-takenotes",
-	                      "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
-	                      "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows",
-	                      "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
-	                      "docs/notes/2026/06/2026-06-02-give-codex-ssh-access-to-remote-devices"
-	                    ]
+                      "docs/notes/2026/06/2026-06-02-takenotes",
+                      "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
+                      "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows",
+                      "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
+                      "docs/notes/2026/06/2026-06-02-give-codex-ssh-access-to-remote-devices"
+                    ]
                   }
                 ]
               }
