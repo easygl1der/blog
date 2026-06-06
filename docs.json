@@ -77,6 +77,7 @@
                   {
                     "group": "Codex As Workflow Engine",
                     "pages": [
+                      "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",
                       "docs/notes/2026/06/2026-06-06-codex-skills-can-replace-some-workflow-code",
                       "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
                       "docs/notes/2026/06/2026-06-03-use-codex-remote-projects-across-hosts",

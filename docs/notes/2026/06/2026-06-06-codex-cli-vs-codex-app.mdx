@@ -1,0 +1,131 @@
+---
+title: "Codex CLI 和 Codex App 的使用差异"
+description: "Codex CLI 和 Codex App 的核心编码能力高度重叠，但 App 更像一个多任务桌面工作台。"
+date: "2026-06-06"
+type: "concept"
+tags: [codex, cli, desktop-app, ai-workflows]
+status: "published"
+---
+
+# Codex CLI 和 Codex App 的使用差异
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">concept</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-06</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">3 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Codex CLI 是终端里的本地 coding agent；Codex App 是把同类 agent 能力放进桌面工作台，用来管理更多任务、线程和可视化产物。
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">cli</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">desktop-app</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-workflows</span>
+  </div>
+</div>
+
+## Summary
+
+如果只是读代码、改文件、运行命令、解释项目、修 bug，Codex CLI 和 Codex App 的能力有很大重叠。真正的差异不在于"谁能写代码"，而在于使用入口和工作流组织方式。
+
+CLI 更像终端里的结对工程师。App 更像一个 Codex 工作台，可以更方便地管理多个线程、多个任务、长时间执行的工作和可视化输出。
+
+---
+
+## Definition
+
+Codex CLI 是命令行工具。它运行在终端里，让 agent 能够在本地项目中读文件、改文件、运行命令，并帮助完成开发任务。
+
+Codex App 是桌面应用。它也能承载 coding agent 的核心能力，但额外提供图形界面、任务线程、产物浏览、桌面集成和更适合长任务的操作体验。
+
+<Info>
+OpenAI 对 Codex CLI 的说明强调它是一个轻量的命令行 coding agent；对 Codex App 的说明则强调它是一个可以同时管理多个 agent、并行工作和长任务协作的界面。
+</Info>
+
+## Explanation
+
+最简单的理解是：
+
+- Codex CLI 是在终端里使用 Codex。
+- Codex App 是在桌面工作台里使用 Codex。
+
+两者共享很多基础能力。你可以让它们理解代码库、修改代码、执行检查、定位错误、解释模块之间的关系，也可以让它们处理本地文件和项目上下文。
+
+但 App 多了一层工作流界面。它更适合把任务拆成不同线程，保留执行状态，查看文件、图片、输出产物，或者让多个 agent 型任务并行推进。CLI 则更直接：你已经在某个 repo 的终端里，就可以马上让 Codex 做事。
+
+<Tip>
+实际选择时，不要问"哪个更强"，而要问"我现在是在终端里快速处理一个 repo，还是要管理一个更长、更可视化、更并行的工作流"。
+</Tip>
+
+## Analogy
+
+CLI 像一个在你当前终端窗口里的工程助手。你打开项目，启动它，然后围绕这个项目快速问、改、跑、验。
+
+App 像一个桌面控制台。它仍然可以操作项目，但更强调任务管理、线程切换、输出浏览和长期协作。对于需要"做完之后让我看到结果"的任务，App 的体验通常更自然。
+
+## In Practice
+
+如果你在一个 repo 里快速修一个 bug、跑测试、检查 diff，CLI 很顺手。它离代码最近，摩擦最小，也适合和你当前 shell 工作流连在一起。
+
+如果你想同时开几个任务、让 agent 长时间处理本地文件、生成可视化产物、整理输出，或者在不同线程之间切换，Codex App 更合适。它把 CLI 的 agent 能力放进了一个更容易管理的桌面环境里。
+
+在当前这类桌面 Codex 环境中，App 还可以更方便地展示本地图片、引用输出文件、管理线程、处理用户可见的交付物，并结合 App 侧工具完成非纯终端任务。
+
+<Warning>
+不要默认认为 App 和 CLI 的每一个附加功能都完全一样。核心 coding-agent 能力重叠，但 App 的桌面集成、线程管理、可视化文件体验和某些工具能力会比单独 CLI 更丰富。
+</Warning>
+
+## Related Concepts
+
+- Codex as a local coding agent
+- Codex as a desktop workflow engine
+- CLI-first development
+- Agent task management
+- Long-running coding workflows
+
+## Sources
+
+- [OpenAI Help Center: Codex CLI Getting Started](https://help.openai.com/en/articles/11096431)
+- [OpenAI: Introducing the Codex app](https://openai.com/index/introducing-the-codex-app/)
+- [OpenAI Help Center: Codex CLI and Sign in with ChatGPT](https://help.openai.com/en/articles/11381614-api-codex-cli-and-sign-in-with-chatgpt)
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">concept</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-06</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">cli</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">desktop-app</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-workflows</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Codex as workflow engine</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">CLI coding agents</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">desktop agent workflows</span>
+      </div>
+    </div>
+  </Card>
+</div>
