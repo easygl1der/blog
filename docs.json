@@ -8,6 +8,101 @@
     "dark": "#0284c7"
   },
   "navigation": {
+    "tabs": [
+      {
+        "tab": "Notes",
+        "icon": "notebook-text",
+        "groups": [
+          {
+            "group": "Notes",
+            "pages": [
+              {
+                "group": "2026",
+                "pages": [
+                  {
+                    "group": "May",
+                    "pages": [
+                      "docs/notes/2026/05/2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis",
+                      "docs/notes/2026/05/2026-05-31-operate-langflow-flows-through-api-and-mcp",
+                      "docs/notes/2026/05/2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow",
+                      "docs/notes/2026/05/2026-05-31-using-the-perplexity-like-langflow-search-flows",
+                      "docs/notes/2026/05/2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows"
+                    ]
+                  },
+                  {
+                    "group": "June",
+                    "pages": [
+                      {
+                        "group": "Self-Hosted AI Infrastructure",
+                        "pages": [
+                          "docs/notes/2026/06/2026-06-06-self-host-clawra-with-openclaw-on-a-mac-mini",
+                          "docs/notes/2026/06/2026-06-02-cloudflare-ip-dns",
+                          "docs/notes/2026/06/2026-06-02-vercel",
+                          "docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp",
+                          "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps"
+                        ]
+                      },
+                      {
+                        "group": "LangFlow Systems",
+                        "pages": [
+                          "docs/notes/2026/06/2026-06-03-clear-comet-cache-for-langflow",
+                          "docs/notes/2026/06/2026-06-03-optimize-langflow-with-postgresql-and-multi-worker-serialization",
+                          "docs/notes/2026/06/2026-06-02-generate-a-whole-book-with-langflow",
+                          "docs/notes/2026/06/2026-06-02-operate-langflow-flows-through-api-and-mcp",
+                          "docs/notes/2026/06/2026-06-02-langflow-debugging-playbook"
+                        ]
+                      },
+                      {
+                        "group": "Search And Research Agents",
+                        "pages": [
+                          "docs/notes/2026/06/2026-06-06-choose-next-js-for-ai-apps-with-backend-work",
+                          "docs/notes/2026/06/2026-06-02-recreate-perplexity-search-with-langflow",
+                          "docs/notes/2026/06/2026-06-02-deep-research-is-an-orchestration-loop",
+                          "docs/notes/2026/06/2026-06-02-crawler-reads-urls-search-finds-urls",
+                          "docs/notes/2026/06/2026-06-02-source-maps-chunk-citations-and-citation-validation",
+                          "docs/notes/2026/06/2026-06-02-how-to-recreate-perplexity-computer-in-langflow",
+                          "docs/notes/2026/06/2026-06-02-browseros-mcp"
+                        ]
+                      },
+                      {
+                        "group": "Auto Research",
+                        "pages": [
+                          "docs/notes/2026/06/2026-06-02-autosota-automatic-sota-code-optimization",
+                          "docs/notes/2026/06/2026-06-02-aris-auto-research-methodology"
+                        ]
+                      },
+                      {
+                        "group": "Creative Technical Workflows",
+                        "pages": [
+                          "docs/notes/2026/06/2026-06-06-compare-figma-and-paper-with-visual-workflow-diagrams",
+                          "docs/notes/2026/06/2026-06-04-cleanshot-x-as-a-mac-capture-workflow",
+                          "docs/notes/2026/06/2026-06-03-math-physics-animation-workflow"
+                        ]
+                      },
+                      {
+                        "group": "Codex As Workflow Engine",
+                        "pages": [
+                          "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",
+                          "docs/notes/2026/06/2026-06-06-codex-skills-can-replace-some-workflow-code",
+                          "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
+                          "docs/notes/2026/06/2026-06-03-use-codex-remote-projects-across-hosts",
+                          "docs/notes/2026/06/2026-06-02-codex-goal",
+                          "docs/notes/2026/06/2026-06-02-takenotes",
+                          "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
+                          "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows",
+                          "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
+                          "docs/notes/2026/06/2026-06-02-give-codex-ssh-access-to-remote-devices"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
     "groups": [
       {
         "group": "Notes",
@@ -16,80 +111,25 @@
             "group": "2026",
             "pages": [
               {
-                "group": "May",
-                "pages": [
-                  "docs/notes/2026/05/2026-05-31-operate-langflow-long-flow-from-localhost-and-remote-apis",
-                  "docs/notes/2026/05/2026-05-31-operate-langflow-flows-through-api-and-mcp",
-                  "docs/notes/2026/05/2026-05-31-build-a-perplexity-like-web-search-flow-in-langflow",
-                  "docs/notes/2026/05/2026-05-31-using-the-perplexity-like-langflow-search-flows",
-                  "docs/notes/2026/05/2026-05-31-defer-streaming-and-keep-langflow-focused-on-evidence-flows"
-                ]
-              },
-              {
                 "group": "June",
                 "pages": [
                   {
-                    "group": "Self-Hosted AI Infrastructure",
-                    "pages": [
-                      "docs/notes/2026/06/2026-06-02-cloudflare-ip-dns",
-                      "docs/notes/2026/06/2026-06-02-vercel",
-                      "docs/notes/2026/06/2026-06-02-deploy-langflow-on-a-vps-and-build-flows-through-mcp",
-                      "docs/notes/2026/06/2026-06-01-deploy-x-ui-with-caddy-https-on-a-vps"
-                    ]
-                  },
-                  {
-                    "group": "LangFlow Systems",
-                    "pages": [
-                      "docs/notes/2026/06/2026-06-03-clear-comet-cache-for-langflow",
-                      "docs/notes/2026/06/2026-06-03-optimize-langflow-with-postgresql-and-multi-worker-serialization",
-                      "docs/notes/2026/06/2026-06-02-generate-a-whole-book-with-langflow",
-                      "docs/notes/2026/06/2026-06-02-operate-langflow-flows-through-api-and-mcp",
-                      "docs/notes/2026/06/2026-06-02-langflow-debugging-playbook"
-                    ]
-                  },
-                  {
-                    "group": "Search And Research Agents",
-                    "pages": [
-                      "docs/notes/2026/06/2026-06-06-choose-next-js-for-ai-apps-with-backend-work",
-                      "docs/notes/2026/06/2026-06-02-recreate-perplexity-search-with-langflow",
-                      "docs/notes/2026/06/2026-06-02-deep-research-is-an-orchestration-loop",
-                      "docs/notes/2026/06/2026-06-02-crawler-reads-urls-search-finds-urls",
-                      "docs/notes/2026/06/2026-06-02-source-maps-chunk-citations-and-citation-validation",
-                      "docs/notes/2026/06/2026-06-02-how-to-recreate-perplexity-computer-in-langflow",
-                      "docs/notes/2026/06/2026-06-02-browseros-mcp"
-                    ]
-                  },
-                  {
-                    "group": "Auto Research",
-                    "pages": [
-                      "docs/notes/2026/06/2026-06-02-autosota-automatic-sota-code-optimization",
-                      "docs/notes/2026/06/2026-06-02-aris-auto-research-methodology"
-                    ]
-                  },
-                  {
-                    "group": "Creative Technical Workflows",
-                    "pages": [
-                      "docs/notes/2026/06/2026-06-06-compare-figma-and-paper-with-visual-workflow-diagrams",
-                      "docs/notes/2026/06/2026-06-04-cleanshot-x-as-a-mac-capture-workflow",
-                      "docs/notes/2026/06/2026-06-03-math-physics-animation-workflow"
-                    ]
-                  },
-                  {
-                    "group": "Codex As Workflow Engine",
-                    "pages": [
-                      "docs/notes/2026/06/2026-06-06-codex-forks-local-chat-branches-vs-new-worktrees",
-                      "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",
-                      "docs/notes/2026/06/2026-06-06-codex-skills-can-replace-some-workflow-code",
-                      "docs/notes/2026/06/2026-06-06-use-openkb-as-the-wiki-layer-for-a-mintlify-rag-knowledge-base",
-                      "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
+	                    "group": "Workflow Guides",
+	                    "pages": [
+	                      "docs/notes/2026/06/2026-06-06-codex-forks-local-chat-branches-vs-new-worktrees",
+	                      "docs/notes/2026/06/2026-06-06-self-host-clawra-with-openclaw-on-a-mac-mini",
+	                      "docs/notes/2026/06/2026-06-06-codex-cli-vs-codex-app",
+	                      "docs/notes/2026/06/2026-06-06-codex-skills-can-replace-some-workflow-code",
+	                      "docs/notes/2026/06/2026-06-06-use-openkb-as-the-wiki-layer-for-a-mintlify-rag-knowledge-base",
+	                      "docs/notes/2026/06/2026-06-04-use-codex-skills-to-operate-langflow-flows",
                       "docs/notes/2026/06/2026-06-03-use-codex-remote-projects-across-hosts",
                       "docs/notes/2026/06/2026-06-02-codex-goal",
-                      "docs/notes/2026/06/2026-06-02-takenotes",
-                      "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
-                      "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows",
-                      "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
-                      "docs/notes/2026/06/2026-06-02-give-codex-ssh-access-to-remote-devices"
-                    ]
+	                      "docs/notes/2026/06/2026-06-02-takenotes",
+	                      "docs/notes/2026/06/2026-06-02-safe-git-collaboration-with-an-ai-agent",
+	                      "docs/notes/2026/06/2026-06-02-build-codex-skills-for-repeatable-workflows",
+	                      "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
+	                      "docs/notes/2026/06/2026-06-02-give-codex-ssh-access-to-remote-devices"
+	                    ]
                   }
                 ]
               }
