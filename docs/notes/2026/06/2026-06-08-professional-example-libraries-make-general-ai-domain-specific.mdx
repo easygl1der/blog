@@ -1,0 +1,159 @@
+---
+title: "Professional Example Libraries Make General AI Domain-Specific"
+description: "A concept note on how curated example libraries, asset indexes, and retrieval workflows can make general AI behave like a domain expert without retraining the model."
+date: "2026-06-08"
+type: "concept"
+tags: [ai-workflows, example-libraries, domain-expertise, rag, scientific-illustration]
+status: "published"
+---
+
+# Professional Example Libraries Make General AI Domain-Specific
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">concept</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-08</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">6 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    A general model becomes much more useful when it can search, read, and reuse a serious domain example library.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-workflows</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">example-libraries</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">domain-expertise</span>
+  </div>
+</div>
+
+## Summary
+
+The important product idea is not only "make the model smarter." It is also "give the model a better professional library to work from."
+
+For biomedical scientific illustration, that library is an indexed image and asset collection. For mathematics, it might be an example bank, animation pattern library, proof pattern collection, or historical set of good constructions.
+
+---
+
+## Definition
+
+A professional example library is a curated store of domain materials that AI can search, inspect, structure, and reuse during a task.
+
+It can contain images, slides, animations, mathematical examples, front-end pages, paper templates, diagrams, workflows, or any other domain-specific artifact. The key is that the library is not just a folder of files. It has enough metadata, naming, tags, provenance, and retrieval structure for an AI system to treat it as usable working context.
+
+<Info>
+This is not the same thing as training a new model. It is a knowledge and retrieval layer that runs alongside the general model and gives it domain-specific examples at the moment it needs them.
+</Info>
+
+## Explanation
+
+General AI is broad, but breadth is not the same as professional judgment. If we ask it to create a specialized output without examples, it often guesses from generic patterns.
+
+That failure is visible in many domains:
+
+- In front-end design, a model may know how to make a page, but not what a strong product interface feels like unless it can study good examples.
+- In mathematical writing, a model may know definitions, but it may not know which examples are canonical, useful, or pedagogically sharp.
+- In mathematical animation generation, a model may understand the topic, but not the visual grammar that makes a proof or construction easy to follow.
+- In biomedical illustration, a model may know a term such as "dendritic cell," but it still needs to know which open images exist, what license they use, and which visual style fits the current deck.
+
+The example library narrows the problem. Instead of asking the model to invent from nowhere, we ask it to search a professional space, compare candidates, reuse existing structure, and generate with local evidence.
+
+<Tip>
+The practical product move is to turn a personal or team knowledge reserve into something the AI can read: structured assets, searchable metadata, previews, provenance, and a skill that tells the model how to use the library.
+</Tip>
+
+## Analogy
+
+Think of a general model as a capable but new assistant. It can write, summarize, reason, and generate, but it does not automatically know the taste, standards, and examples of a particular expert community.
+
+A professional example library is the studio shelf, slide archive, lab notebook, worked-example binder, or design reference wall. Once the assistant can search that shelf and understand what each item is for, it starts behaving less like a generic assistant and more like someone working inside the discipline.
+
+This is especially important for creative technical work. The goal is not simply to retrieve an asset. The goal is to let the model learn enough local structure to produce better outputs: a better figure, a better animation, a better slide, a better mathematical explanation, or a better domain-specific interface.
+
+## In Practice
+
+The biomedical illustration workflow is a concrete case.
+
+The current direction is to build an AI scientific image retrieval library. The system indexes open biomedical images and records fields such as asset ID, source, category, license, author, file path, tags, and source text. Then AI can search the library, show candidate figures, let a human choose, and place the selected image into a target output such as a PowerPoint deck, document, or animation.
+
+The same pattern generalizes.
+
+<Steps>
+  <Step title="Collect a professional library">
+    Gather domain artifacts: biomedical images, mathematical examples, animation sketches, front-end pages, slide templates, paper structures, or other high-quality references.
+  </Step>
+  <Step title="Structure the library">
+    Add metadata that makes the artifacts searchable: names, categories, tags, licenses, authors, source paths, topic labels, style labels, and short descriptions.
+  </Step>
+  <Step title="Expose it through retrieval">
+    Let AI search by keyword, category, semantic similarity, style, task, or context. The first version can be simple; the important thing is that the model can inspect candidates instead of guessing.
+  </Step>
+  <Step title="Wrap it as a skill">
+    A skill tells the model when to use the library, how to read the index, how to preview candidates, how to ask for human selection, and how to write the chosen result into the output.
+  </Step>
+  <Step title="Improve the loop">
+    Add RAG, embeddings, better tagging, style matching, citation handling, and task-specific editing once the basic library workflow works.
+  </Step>
+</Steps>
+
+For mathematics, the library could hold examples of objects, counterexamples, proof patterns, diagrams, and good expository explanations. For mathematical animation generation, it could hold visual scenes, transition patterns, narration structures, geometric primitives, and examples of how to reveal a construction step by step.
+
+For biomedical scientific illustration, the library holds usable assets and attribution information. The AI can search for a "blood immunology cell," present candidate images, and insert the selected result into a PPT or animation while preserving provenance.
+
+<Warning>
+Without a library, the model may hallucinate professional competence. With a library, it has something real to search, imitate, compare, and cite.
+</Warning>
+
+## Related Concepts
+
+- RAG as a product layer, not just a search trick
+- Skills as task-specific wrappers around professional context
+- Asset libraries as knowledge reserves
+- Human selection plus AI retrieval as a practical creative workflow
+- Domain expertise through examples rather than model retraining
+
+The deeper thesis is that many AI products can be built from the combination of:
+
+- a general model,
+- a serious professional example library,
+- a retrieval layer,
+- and a skill that teaches the model how to use that library during a task.
+
+That is a less mystical product strategy than "train a better model." In many cases, the valuable work is to collect the right materials, structure them well, and make them available at the right moment.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">concept</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-08</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">ai-workflows</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">example-libraries</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">domain-expertise</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">scientific-illustration</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">AI scientific image retrieval</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">mathematical animation generation</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">professional knowledge libraries</span>
+      </div>
+    </div>
+  </Card>
+</div>

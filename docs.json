@@ -135,6 +135,12 @@
                       "docs/notes/2026/06/2026-06-02-how-to-use-and-recreate-mintlify",
                       "docs/notes/2026/06/2026-06-02-give-codex-ssh-access-to-remote-devices"
                     ]
+                  },
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "docs/notes/2026/06/2026-06-08-professional-example-libraries-make-general-ai-domain-specific"
+                    ]
                   }
                 ]
               }
