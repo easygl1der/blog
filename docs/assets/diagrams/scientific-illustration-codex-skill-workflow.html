@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Codex 科研绘图 Skill 工作流</title>
+<style>
+  body{margin:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px}
+  .card{background:white;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.08);overflow:auto}
+  svg{display:block;min-width:1240px;width:100%;height:auto;background:white}
+  .t{font-weight:700;fill:#1e1e1e}.s{fill:#64748b}.small{font-size:14px}.mid{font-size:16px}.h{font-size:22px;font-weight:700}.title{font-size:32px;font-weight:800}
+  .box{stroke-width:2;rx:12;ry:12}.arrow{stroke-width:3;fill:none;marker-end:url(#arrow)}.thin{stroke-width:2}.dash{stroke-dasharray:8 8}
+</style>
+</head>
+<body><div class="wrap"><div class="card">
+<svg viewBox="0 0 1280 920" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Codex 科研绘图 Skill 工作流">
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="currentColor"/></marker></defs>
+<text x="40" y="52" class="title">Codex 科研绘图 Skill 工作流</text>
+<text x="42" y="86" class="s mid">开放矢量素材库 + 语义检索 + AI 视觉筛选 + SVG 风格化 + 可编辑 PPT + 人机评论迭代</text>
+
+<rect x="40" y="145" width="190" height="110" fill="#ffd8a8" stroke="#f59e0b" class="box"/>
+<text x="135" y="180" text-anchor="middle" class="t mid">人输入科研意图</text><text x="135" y="205" text-anchor="middle" class="small s">主题 / 对象 / 风格</text><text x="135" y="228" text-anchor="middle" class="small s">输出 PPTX/SVG/PNG</text>
+<path d="M230 200 H320" stroke="#f59e0b" class="arrow"/>
+<rect x="320" y="135" width="230" height="130" fill="#d0bfff" stroke="#8b5cf6" class="box"/>
+<text x="435" y="170" text-anchor="middle" class="t mid">scientific-illustration-ppt</text><text x="435" y="196" text-anchor="middle" class="small s">SKILL.md 路由</text><text x="435" y="218" text-anchor="middle" class="small s">scripts 确定性处理</text><text x="435" y="240" text-anchor="middle" class="small s">assets/references 资源</text>
+<path d="M550 200 H645" stroke="#8b5cf6" class="arrow"/>
+<rect x="645" y="135" width="250" height="130" fill="#a5d8ff" stroke="#4a9eed" class="box"/>
+<text x="770" y="165" text-anchor="middle" class="t mid">检索与筛选</text><text x="770" y="190" text-anchor="middle" class="small s">中文/英文/同义词</text><text x="770" y="212" text-anchor="middle" class="small s">license 过滤</text><text x="770" y="234" text-anchor="middle" class="small s">关键词 + embedding 排序</text><text x="770" y="256" text-anchor="middle" class="small s">contact sheet 视觉复核</text>
+<path d="M895 200 H990" stroke="#4a9eed" class="arrow"/>
+<rect x="990" y="135" width="250" height="130" fill="#d0bfff" stroke="#8b5cf6" class="box"/>
+<text x="1115" y="164" text-anchor="middle" class="t mid">AI 审图 + SVG 风格化</text><text x="1115" y="190" text-anchor="middle" class="small s">是否像目标对象</text><text x="1115" y="212" text-anchor="middle" class="small s">是否符合机制叙事</text><text x="1115" y="234" text-anchor="middle" class="small s">fill/stroke/line-width</text><text x="1115" y="256" text-anchor="middle" class="small s">统一论文图风格</text>
+<path d="M1115 265 V345" stroke="#8b5cf6" class="arrow"/>
+<rect x="965" y="345" width="300" height="170" fill="#b2f2bb" stroke="#22c55e" class="box"/>
+<text x="1115" y="380" text-anchor="middle" class="t mid">可编辑输出</text><text x="1115" y="407" text-anchor="middle" class="small s">PPTX：汇报和论文图排版</text><text x="1115" y="430" text-anchor="middle" class="small s">SVG：继续精修矢量代码</text><text x="1115" y="453" text-anchor="middle" class="small s">PNG：预览/投稿辅助</text><text x="1115" y="476" text-anchor="middle" class="small s">自动生成素材来源与署名</text>
+<path d="M1115 515 V590" stroke="#22c55e" class="arrow"/>
+<polygon points="1110,590 1220,655 1110,720 1000,655" fill="#fff3bf" stroke="#f59e0b" stroke-width="3"/>
+<text x="1110" y="643" text-anchor="middle" class="t mid">满意？</text><text x="1110" y="668" text-anchor="middle" class="small s">机制准确？风格统一？</text>
+<path d="M1000 655 H175 V255" stroke="#f59e0b" class="arrow dash"/>
+<text x="480" y="642" class="small" fill="#b45309">评论/选中图形/口头要求：换素材、改颜色、重排版</text>
+
+<text x="40" y="335" class="h">开放素材库入库</text>
+<ellipse cx="105" cy="420" rx="65" ry="30" fill="#c3fae8" stroke="#06b6d4" stroke-width="2"/><text x="105" y="426" text-anchor="middle" class="mid t">BioIcons</text>
+<ellipse cx="270" cy="420" rx="75" ry="30" fill="#c3fae8" stroke="#06b6d4" stroke-width="2"/><text x="270" y="426" text-anchor="middle" class="mid t">NIH BioArt</text>
+<ellipse cx="445" cy="420" rx="70" ry="30" fill="#c3fae8" stroke="#06b6d4" stroke-width="2"/><text x="445" y="426" text-anchor="middle" class="mid t">Servier</text>
+<ellipse cx="620" cy="420" rx="78" ry="30" fill="#c3fae8" stroke="#06b6d4" stroke-width="2"/><text x="620" y="426" text-anchor="middle" class="mid t">Health Icons</text>
+<path d="M105 450 L265 540" stroke="#06b6d4" class="arrow thin"/><path d="M270 450 L290 540" stroke="#06b6d4" class="arrow thin"/><path d="M445 450 L340 540" stroke="#06b6d4" class="arrow thin"/><path d="M620 450 L385 540" stroke="#06b6d4" class="arrow thin"/>
+<rect x="205" y="540" width="260" height="125" fill="#c3fae8" stroke="#06b6d4" class="box"/>
+<text x="335" y="570" text-anchor="middle" class="t mid">本地素材库</text><text x="335" y="596" text-anchor="middle" class="small s">assets/library/biology</text><text x="335" y="618" text-anchor="middle" class="small s">medicine / anatomy / chemistry</text><text x="335" y="640" text-anchor="middle" class="small s">按内容命名 SVG/PNG</text>
+<rect x="520" y="535" width="340" height="135" fill="#1e293b" stroke="#1e293b" class="box"/>
+<text x="540" y="565" fill="#22c55e" class="mid">assets.jsonl</text><text x="540" y="592" fill="#22c55e" class="small">{id: cd8_t_cell_flat, zh: T细胞,</text><text x="540" y="615" fill="#22c55e" class="small"> domain: immunology, style: flat,</text><text x="540" y="638" fill="#22c55e" class="small"> license: CC0/CC-BY, source: ...}</text>
+<path d="M465 600 H520" stroke="#06b6d4" class="arrow"/><path d="M690 535 C700 410,720 330,750 265" stroke="#06b6d4" class="arrow"/>
+
+<rect x="45" y="745" width="330" height="105" fill="#b2f2bb" stroke="#22c55e" class="box"/>
+<text x="65" y="780" class="t mid">现在可行</text><text x="65" y="808" class="small s">素材入库、检索、AI 看图、SVG 改风格、</text><text x="65" y="832" class="small s">PPTX 生成、引用页</text>
+<rect x="425" y="745" width="390" height="105" fill="#fff3bf" stroke="#f59e0b" class="box"/>
+<text x="445" y="780" class="t mid">依赖产品接口</text><text x="445" y="807" class="small s">点选 PPT 元素后让 Codex 精修，需要 side panel</text><text x="445" y="831" class="small s">暴露元素 ID、坐标、图层和写回能力</text>
+<rect x="860" y="745" width="350" height="105" fill="#ffc9c9" stroke="#ef4444" class="box"/>
+<text x="880" y="780" class="t mid">硬边界</text><text x="880" y="807" class="small s">不能搬商业插件素材；必须保留 license/source；</text><text x="880" y="831" class="small s">医学图和论文图需要人工终审</text>
+</svg></div></div></body></html>
