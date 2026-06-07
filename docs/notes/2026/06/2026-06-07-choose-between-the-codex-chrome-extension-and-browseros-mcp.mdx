@@ -1,0 +1,172 @@
+---
+title: "Choose Between The Codex Chrome Extension And BrowserOS MCP"
+description: "A practical guide for deciding when to control the user's real Chrome browser and when to use BrowserOS MCP for agent-friendly automation."
+date: "2026-06-07"
+type: "guide"
+tags: [codex, chrome-extension, browseros, mcp]
+status: "published"
+---
+
+# Choose Between The Codex Chrome Extension And BrowserOS MCP
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-07</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">6 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Use the Codex Chrome Extension when the task depends on the user's real Chrome session, and use BrowserOS MCP when the task benefits from a structured agent automation platform or external service integrations.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">chrome-extension</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browseros</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+  </div>
+</div>
+
+## Summary
+
+The Codex Chrome Extension and BrowserOS MCP overlap on browser automation, but they are optimized for different jobs. The Chrome extension is best understood as direct control of the user's real Google Chrome, while BrowserOS MCP is best understood as a structured automation and integration surface for agents.
+
+The practical rule is simple: choose Chrome when the live browser context matters, and choose BrowserOS when workflow structure, service integrations, or background automation matter more.
+
+---
+
+## What This Solves
+
+Codex can have more than one way to operate a browser. That creates a routing question: should the agent control the user's actual Google Chrome through the Codex Chrome Extension, or should it use BrowserOS MCP?
+
+This note preserves the decision rule from a hands-on comparison. In a local test, the Chrome extension successfully connected to the real Chrome browser, observed the number of open tabs, opened a local test page, filled fields, selected dropdown options, clicked buttons, scrolled, navigated backward and forward, read console logs, captured viewport and full-page screenshots, and observed a local download event.
+
+<Info>
+This is a practical operating note, not a universal benchmark. Browser capabilities can change, and both tools depend on their current connection, profile, permissions, and browser state.
+</Info>
+
+## Who This Is For
+
+This is for anyone using Codex with both the Codex Chrome Extension and BrowserOS MCP available, especially when deciding which backend should handle clicking, typing, screenshots, debugging, or web-app workflows.
+
+It is also for future agent sessions that need to make the choice quickly without repeating the same comparison from scratch.
+
+## Prerequisites
+
+- The Codex Chrome Extension is installed, enabled, and connected to Google Chrome.
+- BrowserOS MCP is available and has a usable browser profile or active page.
+- The task has a clear browser target: an existing Chrome tab, a new page, a local app, or a connected service.
+- The agent respects the workspace rule for browser automation. In workspaces that explicitly require BrowserOS MCP only, the Chrome extension should be used only when the user explicitly re-enables it for that task.
+
+## The Workflow
+
+<Steps>
+  <Step title="Start with the surface that owns the state">
+    If the important state is already in the user's real Chrome, use the Codex Chrome Extension. This includes existing tabs, logged-in sessions, Chrome profile state, browser extensions, cookies, downloads, and page console logs.
+  </Step>
+  <Step title="Use BrowserOS MCP when the task is an agent workflow">
+    If the task is more about structured automation than the exact local Chrome profile, use BrowserOS MCP. It is designed around observing a page, acting on elements, verifying the result, and connecting to external services through MCP-style actions.
+  </Step>
+  <Step title="Choose Chrome for web debugging">
+    The Chrome extension is stronger when the agent needs developer-oriented signals. In the local test, it could read page console logs, use locator-based actions, observe download events, and capture screenshots from the actual Chrome-controlled tab.
+  </Step>
+  <Step title="Choose BrowserOS for service integrations">
+    BrowserOS MCP is stronger when the task uses external integrations such as YouTube, Google Docs, Slack, GitHub, Notion, or other connected services. In that mode, the agent should discover available actions first, inspect schemas, execute the right action, and handle authentication explicitly.
+  </Step>
+  <Step title="Verify the route before doing real work">
+    For Chrome, a light connection test is listing open tabs or selecting a safe test tab. For BrowserOS, the equivalent is listing pages or taking a snapshot. Do not assume either backend is usable until a small real check succeeds.
+  </Step>
+</Steps>
+
+| Capability | Codex Chrome Extension | BrowserOS MCP |
+| --- | --- | --- |
+| Real Chrome profile | Strong fit because it controls the user's Google Chrome | Depends on BrowserOS profile and session state |
+| Existing Chrome tabs | Strong fit; it can observe and claim real tabs | Not necessarily the user's current Chrome tabs |
+| Login state and cookies | Strong fit when the Chrome profile is already logged in | Depends on BrowserOS authentication state |
+| Click and input | Strong; supports locators, DOM-node interaction, coordinates, and keyboard input | Strong; usually follows snapshot, element ID, action, verification |
+| Screenshots | Strong; viewport and full-page screenshots worked in the local test | Strong when the BrowserOS page is visible and screenshot tools are available |
+| Console logs | Strong; page logs were readable in the local test | Not the main strength |
+| Downloads | Download events were observable in the local test | Depends on the BrowserOS tool surface |
+| File upload | Supported by the Chrome extension path, but may need extension file permissions | Depends on BrowserOS page automation support |
+| Clipboard | Available in the Chrome extension API, but should be used carefully | Not the main routing reason |
+| Hidden or background pages | Not the main advantage | Better conceptual fit when BrowserOS exposes hidden pages or windows |
+| External service actions | Browser control first | Strong fit through MCP integrations |
+| Recording video | Not confirmed as a stable default capability | Not confirmed as a stable default capability |
+
+## Common Failure Modes
+
+<Warning>
+The Chrome extension can appear installed but still fail to communicate. When that happens, check whether Chrome is running, whether the extension is enabled in the active profile, and whether the native host is healthy. Do not treat a connection failure as proof that Chrome automation itself lacks the feature.
+</Warning>
+
+<Warning>
+The Chrome extension refused to open a `data:` URL during testing because of browser-use URL policy. Use a safer local HTTP test page instead of trying to route around the policy.
+</Warning>
+
+<Warning>
+DOM node IDs are stateful. A node ID captured before navigation, refresh, or major page change can become stale. Re-snapshot or re-read the visible DOM before clicking by node ID.
+</Warning>
+
+<Warning>
+Do not publish or summarize private tab titles, browsing history, cookies, local storage, passwords, or session data. A safe connection test can count tabs or use a synthetic local test page without exposing the user's personal browsing context.
+</Warning>
+
+<Tip>
+For day-to-day routing, remember the short version: Chrome is better for "operate my current Chrome"; BrowserOS is better for "run an agent workflow or connected-service action."
+</Tip>
+
+## Final Checklist
+
+- [ ] Does the task depend on an already-open Chrome tab or logged-in Chrome profile?
+- [ ] Does the task require page console logs, download observation, or close-to-real Chrome debugging?
+- [ ] Does the task require BrowserOS MCP service integrations or schema-driven external actions?
+- [ ] Has the chosen backend passed a small connection test before real actions begin?
+- [ ] Are screenshots, logs, tab titles, and other browser-derived data safe to report publicly?
+- [ ] Is the workspace browser-automation policy being followed?
+
+## What To Remember
+
+The Codex Chrome Extension is best when the browser itself is the source of truth. BrowserOS MCP is best when the workflow is the source of truth.
+
+In practice, that means Chrome wins for real-profile browsing, current-tab handoff, console logs, downloads, and browser debugging. BrowserOS wins for structured agent flows, hidden or background automation where available, and MCP-connected service actions.
+
+When a workspace explicitly says to use only BrowserOS MCP, follow that rule. The Chrome extension is still useful to understand, but it should only be activated for a specific task when the user explicitly permits it.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-07</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">chrome-extension</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">browseros</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">browser automation routing</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Codex workflow engine</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">MCP service integrations</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Chrome extension testing</span>
+      </div>
+    </div>
+  </Card>
+</div>
