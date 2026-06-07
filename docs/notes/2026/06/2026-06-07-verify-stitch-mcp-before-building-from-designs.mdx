@@ -1,0 +1,199 @@
+---
+title: "Verify Stitch MCP Before Building From Designs"
+description: "Use Stitch MCP as the account-connected design reading layer before asking an agent to turn screens into a full stack app."
+date: "2026-06-07"
+type: "guide"
+tags: [stitch, mcp, codex, design-to-code, fullstack]
+status: "published"
+---
+
+# Verify Stitch MCP Before Building From Designs
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-07</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">5 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    Before treating Stitch as a full stack starting point, first prove that the agent can read account-owned Stitch projects through MCP.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">stitch</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">design-to-code</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fullstack</span>
+  </div>
+</div>
+
+## Summary
+
+The useful test for Stitch MCP is not whether a config file exists. The useful test is whether the current agent session can list account-owned Stitch projects and retrieve a screen with design metadata, HTML, and a screenshot URL.
+
+Once that works, Stitch becomes an agent-readable design source. It can feed Codex, Antigravity, Gemini CLI, Claude Code, Cursor, or another coding agent, but the receiving agent still has to plan data models, backend services, auth, storage, APIs, and deployment.
+
+---
+
+## What This Solves
+
+Stitch can feel like a direct bridge from design to application because it supports export paths and agent integrations. The practical question is more basic:
+
+```text
+Can my agent actually read my Stitch account and screens?
+```
+
+If the answer is yes, the next step is not to blindly generate a whole app. The next step is to convert the Stitch project into a structured implementation brief.
+
+<Info>
+This note intentionally avoids recording private project IDs or private screen content. The durable lesson is the verification and handoff workflow, not a specific project identifier.
+</Info>
+
+## Who This Is For
+
+This is for anyone using Stitch designs as the starting point for a real app and wondering whether Codex or another agent can access those designs through MCP.
+
+It is especially useful when the goal is a full stack product rather than a static landing page.
+
+## Prerequisites
+
+- A Stitch account with at least one project.
+- A configured Stitch MCP server in the agent environment.
+- A coding agent that can call Stitch MCP tools.
+- A target build stack, such as Next.js, shadcn/ui, Supabase, GitHub, and Vercel.
+
+## The Workflow
+
+<Steps>
+  <Step title="Verify account access with project listing">
+    Ask the agent to list owned Stitch projects. A successful response should return at least one project with metadata such as title, device type, design theme, screen instances, and visibility. If this works, the MCP is not merely installed; it is connected to the account.
+  </Step>
+  <Step title="List screens before choosing an implementation target">
+    After choosing a project, ask the agent to list screens. This separates project-level design theme from individual screen-level implementation details.
+  </Step>
+  <Step title="Retrieve one screen through MCP">
+    Use the screen retrieval tool to fetch the screen details. The important payload usually includes HTML code, screenshot URL, dimensions, device type, and design metadata.
+  </Step>
+  <Step title="Generate a DESIGN.md">
+    Convert the Stitch project into a semantic design system document. This gives future agents a stable reference for colors, typography, spacing, component styling, and layout rules.
+  </Step>
+  <Step title="Ask for an implementation brief before code">
+    Have the receiving agent identify screens, routes, reusable components, user flows, implied data models, auth requirements, storage needs, API boundaries, and build phases.
+  </Step>
+  <Step title="Build frontend first with mock data">
+    Convert the Stitch screens into React or Next.js UI before connecting a backend. This validates that the design handoff worked.
+  </Step>
+  <Step title="Add backend as a separate phase">
+    Only after the frontend and data model are clear, add Supabase or Firebase, protected server routes, environment variables, storage, and deployment.
+  </Step>
+</Steps>
+
+A useful starting prompt is:
+
+```text
+Read my Stitch project through Stitch MCP.
+Do not write code yet.
+
+First produce an implementation brief:
+1. screens and user flows
+2. reusable components
+3. design tokens and visual rules
+4. implied data models
+5. auth, storage, and API requirements
+6. backend tables or collections
+7. build phases and risks
+
+Assume the stack is Next.js, shadcn/ui, Supabase, GitHub, and Vercel.
+```
+
+Then build in a separate step:
+
+```text
+Implement phase 1 only:
+convert the Stitch screens into a responsive Next.js frontend with mock data.
+Do not connect Supabase yet.
+```
+
+## Common Failure Modes
+
+<Warning>
+Do not treat a visible Stitch project in the web UI as proof that the agent can read it. The agent needs working MCP access in the current session.
+</Warning>
+
+<Warning>
+Do not send a screen directly into full stack generation without an implementation brief. Otherwise the agent may invent database tables, auth behavior, or API boundaries from visual guesses.
+</Warning>
+
+<Warning>
+Do not publish private project IDs, private screen IDs, or private design content in public notes unless that is intentional. For public writeups, record the workflow and scrub identifiers.
+</Warning>
+
+<Tip>
+Use project listing to verify account connection, screen listing to choose scope, screen retrieval to get HTML and screenshots, DESIGN.md generation to preserve visual consistency, and React or shadcn conversion skills to start code.
+</Tip>
+
+## Final Checklist
+
+- [ ] The current session can list account-owned Stitch projects.
+- [ ] The target project and screen are selected without exposing private IDs publicly.
+- [ ] The agent can retrieve screen metadata, HTML, and screenshot reference.
+- [ ] A DESIGN.md exists or can be generated from the Stitch project.
+- [ ] The implementation brief defines routes, components, data models, auth, storage, APIs, and build phases.
+- [ ] The first code phase builds frontend with mock data only.
+- [ ] Backend work is added as a separate phase with explicit Supabase or Firebase rules.
+- [ ] Deployment happens from a Git-backed repo, not from an opaque one-shot export.
+
+## What To Remember
+
+The durable model is:
+
+```text
+Stitch MCP verifies account-connected design access
+  -> get project and screen context
+  -> extract DESIGN.md and implementation brief
+  -> build frontend from the design
+  -> add backend deliberately
+  -> deploy from a normal repo
+```
+
+The MCP is the transport layer. It makes Stitch readable outside Stitch. It does not remove the need for product architecture.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-07</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">stitch</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mcp</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">design-to-code</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">fullstack</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Stitch AI Studio handoff</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Stitch export paths</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Agent-readable design systems</span>
+      </div>
+    </div>
+  </Card>
+</div>
