@@ -1,0 +1,254 @@
+---
+title: "Run Lean Verification On A VPS Through SSH"
+description: "A practical workflow for using a private VPS as a bounded Lean and Mathlib verifier instead of relying on Colab notebooks."
+date: "2026-06-08"
+type: "guide"
+tags: [lean, vps, codex, formal-verification, mathlib]
+status: "published"
+---
+
+# Run Lean Verification On A VPS Through SSH
+
+<div className="not-prose mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  <div className="mb-4 flex flex-wrap gap-2">
+    <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">guide</span>
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">2026-06-08</span>
+    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">8 min read</span>
+  </div>
+  <p className="m-0 text-lg leading-8 text-slate-700 dark:text-slate-300">
+    A private SSH-based Lean verifier on a VPS is often simpler and more reliable than driving Colab through a notebook UI.
+  </p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">lean</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mathlib</span>
+  </div>
+</div>
+
+## Summary
+
+The working setup is a private Lean verifier on a Hong Kong VPS, invoked over SSH from the local machine. It keeps Colab out of the critical path, limits memory and CPU use, serializes verification jobs, and supports both temporary single-file proofs and larger multi-file Mathlib projects.
+
+---
+
+## What This Solves
+
+Colab can run Lean, but the notebook UI is awkward for serious verification work. It hides stderr behind collapsed output, requires manual connection and security prompts, and is not a stable API surface. A VPS with enough memory can act as a private verification backend: Codex sends Lean code over SSH, the VPS runs `lake` and `lean`, and the result comes back as plain text.
+
+The final working path uses:
+
+```bash
+/Users/yitwah/bin/lean-verify-vps proof.lean
+```
+
+for one-off files, and:
+
+```bash
+/Users/yitwah/bin/lean-verify-vps --timeout 1800 --heartbeat 30 --project-file BruhatFormalization/MainConjecture.lean
+```
+
+for project files already living inside the VPS Lean workspace.
+
+## Who This Is For
+
+This guide is for a researcher using Codex to formalize mathematics in Lean 4 and Mathlib, especially when the local machine is underpowered but a remote VPS is available. It assumes SSH access to the VPS and a Lean/Mathlib workspace already installed there.
+
+It is also useful for future AI-agent workflows: the agent should not need to click through a notebook page just to discover whether Lean accepted a proof.
+
+## Prerequisites
+
+- SSH alias to the VPS, for example `vps`.
+- A Lean/Mathlib workspace on the VPS, for example `/home/yueyh/lean-cache-workspace/bruhat_mathlib`.
+- Elan installed on the VPS, for example under `/home/yueyh/.elan`.
+- A local wrapper script at `/Users/yitwah/bin/lean-verify-vps`.
+- A private VPS-side script at `/home/yueyh/bin/lean-verify-private`.
+- Enough VPS memory for Mathlib imports. In the tested setup, one `import Mathlib` verification peaked around 6.35GB resident memory.
+
+<Info>
+The tested VPS had 8 vCPU, 15GiB RAM, 4GiB swap, and about 81GB free disk. Single Lean/Mathlib verification jobs were acceptable; unrestricted parallel verification was not.
+</Info>
+
+## The Workflow
+
+<Steps>
+  <Step title="Check whether the VPS can actually run Mathlib">
+    Start with a real `import Mathlib` smoke test, not just `lean --version`. In the tested setup, this command completed in about 8-10 seconds after caches were warm.
+
+    ```lean
+    import Mathlib
+
+    example (n : Nat) : n = n := rfl
+    ```
+  </Step>
+  <Step title="Install a private SSH verifier on the VPS">
+    Put the verifier at `/home/yueyh/bin/lean-verify-private` and keep it executable only by the VPS user.
+
+    ```bash
+    chmod 700 /home/yueyh/bin/lean-verify-private
+    ```
+
+    The script reads Lean code from stdin, copies it into the Lean project, runs verification, prints markers such as `LEAN_VERIFY_OK` or `LEAN_VERIFY_FAILED`, and cleans up temporary files.
+  </Step>
+  <Step title="Use cgroup limits instead of ulimit virtual-memory limits">
+    A hard `ulimit -v` can break Lean in misleading ways, including errors that look like missing `.olean.private` files or thread creation failures. The working verifier uses `systemd-run --user` with cgroup properties instead.
+
+    ```bash
+    systemd-run --user --pipe --wait --collect --quiet \
+      -p "MemoryMax=10G" \
+      -p "CPUQuota=200%" \
+      -p "TasksMax=128" \
+      /path/to/run.sh
+    ```
+  </Step>
+  <Step title="Serialize verification jobs">
+    Lean and Mathlib can consume several gigabytes during imports. The verifier uses a lock file so two proof attempts do not run at the same time and compete for memory.
+
+    ```bash
+    flock -w 10 /home/yueyh/.cache/lean-verifier/verify.lock
+    ```
+  </Step>
+  <Step title="Expose a local wrapper for Codex and shell use">
+    The local wrapper sends proof text to the VPS over SSH.
+
+    ```bash
+    /Users/yitwah/bin/lean-verify-vps proof.lean
+    cat proof.lean | /Users/yitwah/bin/lean-verify-vps
+    ```
+
+    It also supports project files that already live inside the remote Lean project.
+
+    ```bash
+    /Users/yitwah/bin/lean-verify-vps --project-file BruhatFormalization/Main.lean
+    ```
+  </Step>
+  <Step title="Support long jobs with timeout and heartbeat">
+    Some proofs or builds may take much longer than two minutes. The verifier accepts dynamic timeouts and prints heartbeat lines so the caller can see that Lean is still working.
+
+    ```bash
+    /Users/yitwah/bin/lean-verify-vps --timeout 1800 --heartbeat 30 --project-file BruhatFormalization/Main.lean
+    ```
+
+    Heartbeats include elapsed time, load average, memory availability, swap use, and current Lean/Lake processes.
+  </Step>
+  <Step title="Use project-file mode for multi-file formalization">
+    For a real formalization project, split definitions and lemmas into modules instead of sending one huge stdin file. Register the library in `lakefile.toml`.
+
+    ```toml
+    [[lean_lib]]
+    name = "BruhatFormalization"
+    ```
+
+    Then verify the entry module.
+
+    ```bash
+    /Users/yitwah/bin/lean-verify-vps --project-file BruhatFormalization/MainConjecture.lean
+    ```
+  </Step>
+  <Step title="Formalize a proof skeleton before proving every lemma">
+    A useful intermediate state is a Lean dependency skeleton: represent hard analytic lemmas as explicit `axiom`s, then prove that the main conjecture follows from them. This verifies the logical wiring without claiming that the analytic lemmas are proved.
+
+    ```lean
+    theorem main_conjecture_from_intermediate_lemmas
+        (h_pgip : FineMeshPGIP)
+        (h_fiber : AnchoredFiberGeometry)
+        (h_bridge : FinitePopulationBridgeFilling)
+        (h_ou : OUSheetGridContinuumComparison)
+        (h_half : HalfBoardExactDecomposition)
+        (h_corr : MixedJLLPositiveCorrelation)
+        (h_stability : DeletionUniformOneCornerStability)
+        (h_strip : NearAxisStripPersistence)
+        (h_box : AbsoluteLocalBoxLowerBound)
+        (h_upper_grid : FineGridFourCornerUpperDecoupling)
+        (h_polylog : PolylogGridInvarianceUpper)
+        (h_gaussian : GaussianFourCornerBlockDecoupling) :
+        SharpStrongBruhatAsymptotic :=
+      sharpStrongBruhat_from_A_B
+        (assumptionA h_pgip h_fiber h_bridge h_ou)
+        (assumptionB h_half h_corr h_stability h_strip h_box
+          h_upper_grid h_polylog h_gaussian)
+    ```
+  </Step>
+</Steps>
+
+## Common Failure Modes
+
+<Warning>
+Colab can hide the real Lean error behind a collapsed notebook error block. This makes debugging through browser automation unreliable. A shell-based verifier returns stdout, stderr, exit code, and explicit markers such as `LEAN_VERIFY_FAILED`.
+</Warning>
+
+<Warning>
+Do not treat `lean --version` as proof that the environment works. The real test is an `import Mathlib` file checked through `lake env lean` or `lake build`.
+</Warning>
+
+<Warning>
+Using `ulimit -v` to restrict Lean can create misleading failures. Lean may fail to create threads or report missing `.olean.private` files even when the cache is present. Prefer cgroup memory control through `systemd-run`.
+</Warning>
+
+<Warning>
+A multi-file project will not import local modules until the library is registered in `lakefile.toml`. If `import BruhatFormalization.Basic` fails with an unknown module prefix, add a `[[lean_lib]]` entry and verify through `lake build Module.Name`.
+</Warning>
+
+<Tip>
+For temporary single-file checks, a 2MB stdin limit is reasonable. For a serious research formalization, keep files in the remote project and verify an entry module with `--project-file`.
+</Tip>
+
+<Tip>
+Always run a negative test. A deliberately wrong proof should return a type mismatch or tactic failure. This proves the verifier is not merely returning success for everything.
+</Tip>
+
+## Final Checklist
+
+- [ ] VPS can run `import Mathlib` through the verifier and return `LEAN_VERIFY_OK`.
+- [ ] Incorrect Lean code returns `LEAN_VERIFY_FAILED` with a real Lean error.
+- [ ] The verifier uses a single-job lock so concurrent requests serialize.
+- [ ] Long jobs use `--timeout` and `--heartbeat`.
+- [ ] Project files are registered under a `[[lean_lib]]` in `lakefile.toml`.
+- [ ] Multi-file entry modules build through `lake build Module.Name`.
+- [ ] Temporary files are cleaned after verification.
+- [ ] No public API port is exposed; access stays private over SSH.
+
+## What To Remember
+
+The stable unit of automation is not a notebook cell; it is a bounded verifier process with plain-text inputs and outputs. For Lean formalization work, the useful progression is: run one-file checks, move to a remote Mathlib project, register local modules, build a theorem dependency skeleton, then replace axioms with real proofs one lemma at a time.
+
+A VPS verifier also changes how AI assistance should work. Codex can propose Lean code, send it to the remote verifier, read the exact error, and iterate without relying on browser UI state.
+
+---
+
+## Metadata
+
+<div className="grid gap-4 md:grid-cols-2">
+  <Card title="Quick Reference">
+    <div className="not-prose mt-1 space-y-3 text-sm">
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Type</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">guide</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Status</span>
+        <span className="font-semibold text-emerald-700 dark:text-emerald-300">published</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+        <span className="font-medium text-slate-500 dark:text-slate-400">Date</span>
+        <span className="font-semibold text-slate-900 dark:text-slate-100">2026-06-08</span>
+      </div>
+    </div>
+  </Card>
+  <Card title="Retrieval Tags">
+    <div className="not-prose flex flex-wrap gap-2">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">lean</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">vps</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">codex</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">mathlib</span>
+    </div>
+    <div className="not-prose mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Related</div>
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Codex remote verification</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Lean proof skeletons</span>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">Self-hosted AI infrastructure</span>
+      </div>
+    </div>
+  </Card>
+</div>
