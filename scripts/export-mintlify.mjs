@@ -109,6 +109,7 @@ writeFileSync(searchIndexPath, JSON.stringify(index, null, 2));
 function localSearchClient() {
   const state = { index: null, open: false };
   const maxResults = 12;
+  const searchSelector = "#search-bar-entry,#search-bar-entry-mobile";
 
   const styles = document.createElement("style");
   styles.textContent = `
@@ -214,13 +215,34 @@ function localSearchClient() {
   }
 
   function intercept(event) {
-    const target = event.target.closest && event.target.closest("#search-bar-entry,#search-bar-entry-mobile");
+    const target = event.target.closest && event.target.closest(searchSelector);
     if (!target) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    event.stopPropagation();
     openSearch();
   }
 
+  function neutralizeNativeSearchHandlers() {
+    document.querySelectorAll(searchSelector).forEach((button) => {
+      if (button.dataset.ysLocalSearch === "true") return;
+      const clone = button.cloneNode(true);
+      clone.dataset.ysLocalSearch = "true";
+      clone.addEventListener("click", intercept, true);
+      clone.addEventListener("pointerdown", intercept, true);
+      clone.addEventListener("mousedown", intercept, true);
+      button.replaceWith(clone);
+    });
+  }
+
+  neutralizeNativeSearchHandlers();
+  new MutationObserver(neutralizeNativeSearchHandlers).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
+  document.addEventListener("pointerdown", intercept, true);
+  document.addEventListener("mousedown", intercept, true);
   document.addEventListener("click", intercept, true);
   document.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -235,10 +257,11 @@ const localSearchScript = `(${localSearchClient.toString()})();\n`;
 
 writeFileSync(searchScriptPath, localSearchScript);
 
-const htmlPath = join(outputDir, "index.html");
-let html = readFileSync(htmlPath, "utf8");
 const scriptTag = '<script src="/local-search.js" defer></script>';
-if (!html.includes(scriptTag)) {
-  html = html.replace("</body>", `${scriptTag}</body>`);
-  writeFileSync(htmlPath, html);
+for (const htmlPath of walkFiles(outputDir).filter((file) => file.endsWith(".html"))) {
+  let html = readFileSync(htmlPath, "utf8");
+  if (!html.includes(scriptTag)) {
+    html = html.replace("</body>", `${scriptTag}</body>`);
+    writeFileSync(htmlPath, html);
+  }
 }
