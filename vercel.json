@@ -3,6 +3,13 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": null,
+  "redirects": [
+    {
+      "source": "/docs/notes/2026/06/2026-06-08-choose-wechat-channels-video-download-tools",
+      "destination": "/docs/notes/2026/06/2026-06-08-how-to-download-wechat-channels-videos",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/_next/static/(.*)",
